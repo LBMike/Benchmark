@@ -78,7 +78,7 @@ body {
   position: fixed;
   left: 0;
   top: 48px;
-  width: 80px;
+  width: 120px;
   height: calc(100vh - 48px);
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
@@ -98,11 +98,11 @@ body {
 }
 
 .nav-tab {
-  padding: 14px 4px;
+  padding: 14px 8px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   border-radius: var(--radius-sm);
@@ -131,7 +131,7 @@ body {
 
 /* --- Main Content Wrapper --- */
 .main-wrapper {
-  margin-left: 80px;
+  margin-left: 120px;
   margin-top: 48px;
   min-height: calc(100vh - 48px);
 }
