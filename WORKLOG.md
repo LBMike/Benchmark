@@ -12,6 +12,20 @@
 
 ---
 
+## 2026-03-03 01:25 KST
+- 작업: Overview > Rate Comparison에 탭형 필터 UI 추가 (체인/프로토콜/스테이블코인)
+- 파일: `index.html`, `css/style.css`, `js/app.js`
+- 이유: Rate Comparison 표를 조건별로 빠르게 필터링할 수 있도록 요청 반영
+- 변경 내용:
+  - `index.html`: `Rate Comparison` 섹션에 `comparison-filters` 영역 추가
+    - Chain 탭: All, Ethereum, Base, Arbitrum, Plasma, Mantle, Solana
+    - Protocol 탭: All, Aave V3, Morpho, Spark, Fluid, Euler V2, Kamino, Jupiter
+    - Stablecoin 탭: All, USDC, USDT, USDS, USDe, PYUSD
+  - `css/style.css`: 탭형 필터 스타일(`comparison-filter-*`) 및 모바일 반응형 정렬 추가
+  - `js/app.js`: 탭 클릭 시 `store.setFilter('overview', key, value)` 적용 및 같은 key 그룹 active 상태 토글
+- 검증: 로컬 서버에서 `index.html/css/app.js` 200 재로딩 확인, 기존 Overview 테이블 렌더 경로와 충돌 없음 확인
+- 다음: 브라우저에서 탭 조합 필터링(예: Chain=Base + Protocol=Aave V3 + Stablecoin=USDC) 결과 수동 점검
+
 ## 2026-03-03 00:44 KST
 - 작업: 상시 공유용 배포 설정 파일 및 가이드 추가
 - 파일: `.gitignore`, `netlify.toml`, `vercel.json`, `DEPLOY.md`

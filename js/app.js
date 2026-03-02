@@ -189,6 +189,21 @@ function initTabs() {
 
 // --- 필터 연동 ---
 function initFilters() {
+  // Overview 테이블 탭 필터
+  document.querySelectorAll('.comparison-filter-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      const value = btn.dataset.value;
+      if (!key || value == null) return;
+
+      document.querySelectorAll(`.comparison-filter-tab[data-key="${key}"]`).forEach(b => {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      store.setFilter('overview', key, value);
+    });
+  });
+
   // Supply 탭 필터
   ['supply-protocol-filter', 'supply-chain-filter', 'supply-asset-filter'].forEach(id => {
     const el = document.getElementById(id);

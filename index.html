@@ -100,6 +100,44 @@
     <!-- Quick Comparison Table -->
     <section class="table-section">
       <h2>Rate Comparison</h2>
+      <div class="comparison-filters">
+        <div class="comparison-filter-group">
+          <span class="comparison-filter-label">Chain</span>
+          <div class="comparison-filter-tabs">
+            <button class="comparison-filter-tab active" data-key="chain" data-value="all">All</button>
+            <button class="comparison-filter-tab" data-key="chain" data-value="ethereum">Ethereum</button>
+            <button class="comparison-filter-tab" data-key="chain" data-value="base">Base</button>
+            <button class="comparison-filter-tab" data-key="chain" data-value="arbitrum">Arbitrum</button>
+            <button class="comparison-filter-tab" data-key="chain" data-value="plasma">Plasma</button>
+            <button class="comparison-filter-tab" data-key="chain" data-value="mantle">Mantle</button>
+            <button class="comparison-filter-tab" data-key="chain" data-value="solana">Solana</button>
+          </div>
+        </div>
+        <div class="comparison-filter-group">
+          <span class="comparison-filter-label">Protocol</span>
+          <div class="comparison-filter-tabs">
+            <button class="comparison-filter-tab active" data-key="protocol" data-value="all">All</button>
+            <button class="comparison-filter-tab" data-key="protocol" data-value="aave-v3">Aave V3</button>
+            <button class="comparison-filter-tab" data-key="protocol" data-value="morpho">Morpho</button>
+            <button class="comparison-filter-tab" data-key="protocol" data-value="spark">Spark</button>
+            <button class="comparison-filter-tab" data-key="protocol" data-value="fluid">Fluid</button>
+            <button class="comparison-filter-tab" data-key="protocol" data-value="euler">Euler V2</button>
+            <button class="comparison-filter-tab" data-key="protocol" data-value="kamino">Kamino</button>
+            <button class="comparison-filter-tab" data-key="protocol" data-value="jupiter">Jupiter</button>
+          </div>
+        </div>
+        <div class="comparison-filter-group">
+          <span class="comparison-filter-label">Stablecoin</span>
+          <div class="comparison-filter-tabs">
+            <button class="comparison-filter-tab active" data-key="asset" data-value="all">All</button>
+            <button class="comparison-filter-tab" data-key="asset" data-value="USDC">USDC</button>
+            <button class="comparison-filter-tab" data-key="asset" data-value="USDT">USDT</button>
+            <button class="comparison-filter-tab" data-key="asset" data-value="USDS">USDS</button>
+            <button class="comparison-filter-tab" data-key="asset" data-value="USDe">USDe</button>
+            <button class="comparison-filter-tab" data-key="asset" data-value="PYUSD">PYUSD</button>
+          </div>
+        </div>
+      </div>
       <div class="table-wrapper">
         <table id="overview-table" class="data-table">
           <thead>
