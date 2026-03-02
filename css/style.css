@@ -48,10 +48,16 @@ body {
 }
 
 .logo {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--accent);
+  display: flex;
+  align-items: center;
+  text-decoration: none;
   white-space: nowrap;
+}
+
+.logo-img {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
 }
 
 .nav-tabs {
