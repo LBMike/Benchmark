@@ -12,6 +12,16 @@
 
 ---
 
+## 2026-03-03 02:30 KST
+- 작업: Fluid ETH 기반 USDC, USDT 마켓 추가 (DefiLlama fallback)
+- 파일: `js/config.js`, `js/data/fluid.js`
+- 이유: Fluid Ethereum의 on-chain LendingResolver(`0x48D32f...`)가 execution reverted (ABI/의존성 변경). USDC $225M, USDT $150M 규모 마켓 누락 해결
+- 변경 내용:
+  - `js/config.js`: `FLUID_DEFILLAMA_POOLS` 추가 — Fluid ETH USDC/USDT의 DefiLlama pool ID 매핑
+  - `js/data/fluid.js`: `fetchFluidFromDefiLlama(chain)` 함수 추가 — per-pool endpoint(`/chart/{poolId}`)로 최신 TVL/APY 가져오기. LendingResolver 실패 시 자동 fallback. Borrow rate는 supply × 1.4 추정
+- 검증: 프리뷰에서 18마켓 확인 (16→18), Fluid ETH USDC(2.13%/$225M) + USDT(2.09%/$150M) 정상 표시
+- 다음: 추가 요청 대기
+
 ## 2026-03-03 01:25 KST
 - 작업: Overview > Rate Comparison에 탭형 필터 UI 추가 (체인/프로토콜/스테이블코인)
 - 파일: `index.html`, `css/style.css`, `js/app.js`

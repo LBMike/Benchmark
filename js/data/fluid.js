@@ -4,7 +4,7 @@
 
 import {
   FLUID_RESOLVERS, FLUID_LENDING_RESOLVER_ABI,
-  FLUID_VAULT_RESOLVER_ABI,
+  FLUID_VAULT_RESOLVER_ABI, FLUID_DEFILLAMA_POOLS,
   RPC_URLS, CHAIN_NAME_TO_ID,
 } from '../config.js';
 import { normalizeMarket, addressToSymbol } from '../utils.js';
@@ -30,6 +30,56 @@ function fluidRateToAPY(rate) {
   return isFinite(apy) && apy < 1000 ? apy : 0;
 }
 
+// ── DefiLlama Fallback (when on-chain resolver fails) ──
+
+const DEFILLAMA_CHART_URL = 'https://yields.llama.fi/chart';
+
+async function fetchFluidFromDefiLlama(chain) {
+  const pools = FLUID_DEFILLAMA_POOLS[chain];
+  if (!pools) return [];
+
+  const results = [];
+  const entries = Object.entries(pools); // e.g. [['USDC', 'poolId'], ...]
+
+  const fetches = entries.map(async ([symbol, poolId]) => {
+    try {
+      const res = await fetch(`${DEFILLAMA_CHART_URL}/${poolId}`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const points = json.data || [];
+      if (points.length === 0) return null;
+
+      const latest = points[points.length - 1];
+      const supplyAPY = latest.apyBase || latest.apy || 0;
+      const tvl = latest.tvlUsd || 0;
+      if (supplyAPY <= 0 || tvl < 1000000) return null;
+
+      // Borrow rate estimated (no borrow data from DefiLlama for Fluid)
+      const borrowAPY = supplyAPY * 1.4;
+      const totalBorrow = tvl * 0.7;
+      const utilization = 0.7;
+
+      return normalizeMarket(
+        'fluid', chain, CHAIN_NAME_TO_ID[chain], symbol,
+        supplyAPY, borrowAPY, tvl, totalBorrow, utilization
+      );
+    } catch (e) {
+      console.warn(`Fluid DefiLlama ${chain}/${symbol}:`, e.message);
+      return null;
+    }
+  });
+
+  const settled = await Promise.allSettled(fetches);
+  for (const r of settled) {
+    if (r.status === 'fulfilled' && r.value) results.push(r.value);
+  }
+  return results;
+}
+
+// ── Main Fetcher ──
+
 export async function fetchFluidData() {
   const allResults = [];
 
@@ -53,6 +103,16 @@ export async function fetchFluidData() {
         fTokensData = await lendingResolver.getFTokensEntireData();
       } catch (e) {
         console.warn(`Fluid LendingResolver ${chain}:`, e.message);
+        // Fallback to DefiLlama when on-chain resolver fails
+        try {
+          const fallback = await fetchFluidFromDefiLlama(chain);
+          if (fallback.length > 0) {
+            allResults.push(...fallback);
+            console.log(`Fluid ${chain}: loaded ${fallback.length} markets from DefiLlama fallback`);
+          }
+        } catch (e2) {
+          console.warn(`Fluid ${chain} DefiLlama fallback failed:`, e2.message);
+        }
         continue;
       }
 
