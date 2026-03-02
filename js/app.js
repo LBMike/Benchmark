@@ -183,6 +183,22 @@ function initTabs() {
       contents.forEach(c => c.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById(`tab-${target}`)?.classList.add('active');
+
+      // Auto-expand parent accordion group when nested tab is clicked
+      const parentGroup = tab.closest('.nav-group');
+      if (parentGroup) {
+        parentGroup.classList.remove('collapsed');
+        parentGroup.classList.add('expanded');
+      }
+    });
+  });
+
+  // Accordion group toggle
+  document.querySelectorAll('.nav-group-toggle').forEach(toggle => {
+    toggle.addEventListener('click', () => {
+      const group = toggle.closest('.nav-group');
+      group.classList.toggle('collapsed');
+      group.classList.toggle('expanded');
     });
   });
 }

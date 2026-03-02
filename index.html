@@ -24,8 +24,18 @@
   <aside class="sidebar">
     <nav class="nav-tabs">
       <button class="nav-tab active" data-tab="overview">Overview</button>
-      <button class="nav-tab" data-tab="supply">Supply</button>
-      <button class="nav-tab" data-tab="borrow">Borrow</button>
+
+      <div class="nav-group expanded">
+        <button class="nav-group-toggle">
+          DeFi Lending
+          <span class="nav-group-arrow">▾</span>
+        </button>
+        <div class="nav-group-items">
+          <button class="nav-tab" data-tab="supply">Supply</button>
+          <button class="nav-tab" data-tab="borrow">Borrow</button>
+        </div>
+      </div>
+
       <button class="nav-tab" data-tab="funding">Funding</button>
     </nav>
   </aside>

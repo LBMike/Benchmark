@@ -122,6 +122,60 @@ body {
   border-left-color: var(--accent);
 }
 
+/* --- Sidebar Accordion Group --- */
+.nav-group {
+  width: 100%;
+}
+
+.nav-group-toggle {
+  padding: 14px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+  border-left: 3px solid transparent;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-group-toggle:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.04);
+}
+
+.nav-group-arrow {
+  font-size: 10px;
+  transition: transform 0.25s ease;
+  opacity: 0.6;
+}
+
+.nav-group.collapsed .nav-group-arrow {
+  transform: rotate(-90deg);
+}
+
+.nav-group-items {
+  max-height: 200px;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+
+.nav-group.collapsed .nav-group-items {
+  max-height: 0;
+}
+
+.nav-group-items .nav-tab {
+  padding-left: 20px;
+  font-size: 11px;
+  text-align: left;
+}
+
 .protocol-status {
   display: flex;
   flex-wrap: wrap;
