@@ -12,6 +12,16 @@
 
 ---
 
+## 2026-03-03 02:55 KST
+- 작업: 상단 헤더 네비게이션 → 좌측 사이드바 전환 (Delphi Digital 스타일)
+- 파일: `index.html`, `css/style.css`
+- 이유: 헤더에 탭이 많아 좌측 사이드바로 이동하여 콘텐츠 영역 확보
+- 변경 내용:
+  - `index.html`: `<header>` 제거 → `<aside class="sidebar">` 추가 (로고+탭+상태 세로 배치), 모든 `<main>` 탭을 `<div class="main-wrapper">`로 래핑
+  - `css/style.css`: `.sidebar` (fixed, 100px 너비, flex-column), `.nav-tab` 세로 배치 + accent 좌측 보더, `.main-wrapper` (margin-left: 100px), 반응형 768px 이하 → 상단 가로 바로 전환
+- 검증: 프리뷰에서 사이드바 표시, 4탭 전환 정상, 콘텐츠 레이아웃 깨짐 없음
+- 다음: 추가 요청 대기
+
 ## 2026-03-03 02:30 KST
 - 작업: Fluid ETH 기반 USDC, USDT 마켓 추가 (DefiLlama fallback)
 - 파일: `js/config.js`, `js/data/fluid.js`

@@ -9,9 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Header -->
-  <header class="header">
-    <div class="header-left">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
       <a href="/" class="logo"><img src="assets/logo.png" alt="DeFi Rate Benchmark" class="logo-img"></a>
     </div>
     <nav class="nav-tabs">
@@ -20,11 +20,14 @@
       <button class="nav-tab" data-tab="borrow">Borrow</button>
       <button class="nav-tab" data-tab="funding">Funding</button>
     </nav>
-    <div class="header-right">
+    <div class="sidebar-bottom">
       <div id="protocol-status" class="protocol-status"></div>
       <span id="last-updated" class="last-updated"></span>
     </div>
-  </header>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-wrapper">
 
   <!-- Overview Tab -->
   <main id="tab-overview" class="tab-content active">
@@ -373,6 +376,8 @@
       </div>
     </section>
   </main>
+
+  </div><!-- /.main-wrapper -->
 
   <!-- Loading Overlay -->
   <div id="loading-overlay" class="loading-overlay">
