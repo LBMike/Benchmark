@@ -16,7 +16,7 @@ for (const [, tokens] of Object.entries(EVM_STABLECOIN_ADDRESSES)) {
 }
 
 // 심볼별 decimals
-const SYMBOL_DECIMALS = { USDC: 6, USDT: 6, USDS: 18, RLUSD: 18 };
+const SYMBOL_DECIMALS = { USDC: 6, USDT: 6, USDS: 18, RLUSD: 18, PYUSD: 6 };
 
 async function gql(endpoint, query) {
   const res = await fetch(endpoint, {
