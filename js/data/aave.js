@@ -2,8 +2,21 @@
 // AAVE V3 Data Fetcher — GraphQL API
 // ============================================================
 
-import { AAVE_ENDPOINT, AAVE_MARKETS, EVM_CHAINS, EVM_STABLECOIN_ADDRESSES, ADDRESS_TO_SYMBOL } from '../config.js';
+import { AAVE_ENDPOINT, AAVE_MARKETS, EVM_CHAINS, EVM_STABLECOIN_ADDRESSES, ADDRESS_TO_SYMBOL, AAVE_EXTRA_ASSETS } from '../config.js';
 import { decimalToPercent, normalizeMarket, chainIdToName } from '../utils.js';
+
+// Build Aave-specific address lookup (stablecoins + extra assets like WETH)
+const AAVE_ADDR_TO_SYMBOL = { ...ADDRESS_TO_SYMBOL };
+for (const [, tokens] of Object.entries(AAVE_EXTRA_ASSETS)) {
+  for (const [symbol, addr] of Object.entries(tokens)) {
+    AAVE_ADDR_TO_SYMBOL[addr.toLowerCase()] = symbol;
+  }
+}
+
+// Non-stablecoin assets (TVL must use USD from API, not token count)
+const NON_STABLE_SYMBOLS = new Set(
+  Object.values(AAVE_EXTRA_ASSETS).flatMap(tokens => Object.keys(tokens))
+);
 
 async function gql(query, variables = {}) {
   const res = await fetch(AAVE_ENDPOINT, {
@@ -60,18 +73,23 @@ export async function fetchAaveData() {
       for (const reserve of market.reserves) {
         // 주소 기반 필터링 (심볼 변형 문제 해결: USD₮0, USDC.e 등)
         const tokenAddr = reserve.underlyingToken.address?.toLowerCase();
-        const symbol = ADDRESS_TO_SYMBOL[tokenAddr];
-        if (!symbol) continue; // 우리 USDC/USDT 주소 목록에 없으면 스킵
+        const symbol = AAVE_ADDR_TO_SYMBOL[tokenAddr];
+        if (!symbol) continue; // 추적 대상 주소 목록에 없으면 스킵
 
         const supplyAPY = decimalToPercent(reserve.supplyInfo.apy.value);
         const borrowAPY = decimalToPercent(reserve.borrowInfo.apy.value);
 
-        // TVL = total supply in token units (stablecoin ≈ $1 each)
         const totalSupplyTokens = Number(reserve.supplyInfo.total.value) || 0;
-        const tvl = totalSupplyTokens; // stablecoin, ~$1
-
         const totalBorrowUsd = Number(reserve.borrowInfo.total.usd) || 0;
         const utilization = Number(reserve.borrowInfo.utilizationRate.value) || 0;
+
+        // TVL: for non-stablecoins (WETH), derive USD TVL from borrow USD / utilization
+        let tvl;
+        if (NON_STABLE_SYMBOLS.has(symbol)) {
+          tvl = utilization > 0.01 ? totalBorrowUsd / utilization : totalBorrowUsd;
+        } else {
+          tvl = totalSupplyTokens; // stablecoin ≈ $1 each
+        }
 
         // 비정상 APY 필터 (>100% 이상은 스킵)
         if (supplyAPY > 100 || borrowAPY > 100) continue;
@@ -100,7 +118,9 @@ export async function fetchAaveHistory() {
       if (!marketAddr) continue;
 
       const stableAddrs = EVM_STABLECOIN_ADDRESSES[chain.name] || {};
-      for (const [symbol, tokenAddr] of Object.entries(stableAddrs)) {
+      const extraAddrs = AAVE_EXTRA_ASSETS[chain.name] || {};
+      const allAddrs = { ...stableAddrs, ...extraAddrs };
+      for (const [symbol, tokenAddr] of Object.entries(allAddrs)) {
         try {
           const data = await gql(`{
             supplyAPYHistory(request: {

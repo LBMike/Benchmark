@@ -38,6 +38,7 @@ export const STABLECOIN_ADDRESSES = {
     USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
     USDS: '0xdC035D45d973E3EC169d2276DDab16f1e407384F',
     USDe: '0x4c9EDD5852cd905f086C759E8383e09bff1E68B3',
+    RLUSD: '0x8292bb45bf1ee4d140127049757c2e0ff06317ed',
   },
   base: {
     USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -73,6 +74,18 @@ for (const [chain, tokens] of Object.entries(STABLECOIN_ADDRESSES)) {
   }
 }
 
+// Non-stablecoin assets tracked only on Aave (need USD TVL from API)
+export const AAVE_EXTRA_ASSETS = {
+  ethereum: {
+    WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+  },
+};
+
+// Aave Horizon (separate RWA market) — DefiLlama pool IDs
+export const HORIZON_DEFILLAMA_POOLS = {
+  RLUSD: '98d07333-f5e4-4a48-8061-cfb4b73ccf79',
+};
+
 export const PROTOCOL_COLORS = {
   'aave-v3': '#B6509E',
   morpho: '#2470FF',
@@ -81,6 +94,7 @@ export const PROTOCOL_COLORS = {
   euler: '#E8475F',
   kamino: '#44D4B0',
   jupiter: '#93D43F',
+  horizon: '#2564EB',
 };
 
 export const PROTOCOL_LABELS = {
@@ -91,6 +105,7 @@ export const PROTOCOL_LABELS = {
   euler: 'Euler V2',
   kamino: 'Kamino',
   jupiter: 'Jupiter',
+  horizon: 'Horizon',
 };
 
 // --- Euler V2 Subgraph Endpoints (Goldsky, free, no key) ---

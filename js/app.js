@@ -9,6 +9,7 @@ import { fetchMorphoData, fetchMorphoHistory } from './data/morpho.js';
 import { fetchSparkData } from './data/spark.js';
 import { fetchFluidData } from './data/fluid.js';
 import { fetchEulerData } from './data/euler.js';
+import { fetchHorizonData } from './data/horizon.js';
 import { fetchKaminoData } from './data/kamino.js';
 import { fetchJupiterData } from './data/jupiter.js';
 import { fetchFundingRates, fetchAllFundingHistory } from './data/funding.js';
@@ -41,7 +42,7 @@ const currentRangeByScope = {
 
 // --- 데이터 폴링 (Lending) ---
 async function pollAll() {
-  const [aaveResult, morphoResult, sparkResult, fluidResult, eulerResult, kaminoResult, jupiterResult] = await Promise.allSettled([
+  const [aaveResult, morphoResult, sparkResult, fluidResult, eulerResult, kaminoResult, jupiterResult, horizonResult] = await Promise.allSettled([
     fetchAaveData(),
     fetchMorphoData(),
     fetchSparkData(),
@@ -49,6 +50,7 @@ async function pollAll() {
     fetchEulerData(),
     fetchKaminoData(),
     fetchJupiterData(),
+    fetchHorizonData(),
   ]);
 
   const extract = (result) => {
@@ -63,6 +65,7 @@ async function pollAll() {
   const euler = extract(eulerResult);
   const kamino = extract(kaminoResult);
   const jupiter = extract(jupiterResult);
+  const horizon = extract(horizonResult);
 
   // 프로토콜 상태 업데이트
   store.setProtocolStatus('aave-v3', !aave.error, aave.error);
@@ -72,9 +75,10 @@ async function pollAll() {
   store.setProtocolStatus('euler', !euler.error, euler.error);
   store.setProtocolStatus('kamino', !kamino.error, kamino.error);
   store.setProtocolStatus('jupiter', !jupiter.error, jupiter.error);
+  store.setProtocolStatus('horizon', !horizon.error, horizon.error);
 
   // 마켓 데이터 병합
-  const allMarkets = [...aave.data, ...morpho.data, ...spark.data, ...fluid.data, ...euler.data, ...kamino.data, ...jupiter.data];
+  const allMarkets = [...aave.data, ...morpho.data, ...spark.data, ...fluid.data, ...euler.data, ...kamino.data, ...jupiter.data, ...horizon.data];
   store.setMarkets(allMarkets);
 
   updateLastUpdated();
