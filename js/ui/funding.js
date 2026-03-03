@@ -69,6 +69,63 @@ export function renderFundingCards(fundingRates) {
 
 // ── Funding History Chart ──
 
+// Per-asset OI-weighted benchmark (average across exchanges for a single asset)
+function buildAssetBenchmarkSeries(fundingHistory, fundingRates, asset, cutoff) {
+  const exchangeKeys = Object.keys(FUNDING_EXCHANGES);
+
+  const weightByExch = {};
+  for (const r of fundingRates || []) {
+    if (r.asset === asset && r.exchange) {
+      weightByExch[r.exchange] = Number(r.openInterestUsd) || 0;
+    }
+  }
+
+  const allTimestamps = new Set();
+  const pointMapByExch = {};
+
+  for (const exch of exchangeKeys) {
+    const id = `${exch}-${asset}`;
+    pointMapByExch[exch] = {};
+    for (const p of fundingHistory[id] || []) {
+      if (p.x < cutoff) continue;
+      pointMapByExch[exch][p.x] = p.y;
+      allTimestamps.add(p.x);
+    }
+  }
+
+  const timestamps = [...allTimestamps].sort((a, b) => a - b);
+  const points = [];
+
+  for (const ts of timestamps) {
+    let weightedSum = 0;
+    let totalWeight = 0;
+    let simpleSum = 0;
+    let simpleCount = 0;
+
+    for (const exch of exchangeKeys) {
+      const v = pointMapByExch[exch][ts];
+      if (v == null) continue;
+      simpleSum += v;
+      simpleCount += 1;
+
+      const w = weightByExch[exch] || 0;
+      if (w > 0) {
+        weightedSum += v * w;
+        totalWeight += w;
+      }
+    }
+
+    if (simpleCount === 0) continue;
+    points.push({
+      x: ts,
+      y: totalWeight > 0 ? weightedSum / totalWeight : simpleSum / simpleCount,
+    });
+  }
+
+  return points;
+}
+
+// Global benchmark (OI-weighted across all assets + exchanges)
 function buildBenchmarkSeries(fundingHistory, fundingRates, cutoff) {
   const ids = [];
   for (const exch of Object.keys(FUNDING_EXCHANGES)) {
@@ -156,6 +213,13 @@ export function renderFundingChart(fundingHistory, fundingRates, asset = 'BENCHM
         }
       }
     }
+    // Per-asset OI-weighted benchmark across exchanges
+    const assetBenchmarkPts = buildAssetBenchmarkSeries(fundingHistory, fundingRates, asset, cutoff);
+    seriesMap['__benchmark'] = {};
+    for (const p of assetBenchmarkPts) {
+      allTimestamps.add(p.x);
+      seriesMap['__benchmark'][p.x] = annualizeFunding(p.y);
+    }
   }
 
   const timestamps = [...allTimestamps].sort((a, b) => a - b);
@@ -181,16 +245,30 @@ export function renderFundingChart(fundingHistory, fundingRates, asset = 'BENCHM
       tension: 0.3,
       spanGaps: true,
     }]
-    : exchangeKeys.map(exch => ({
-      label: FUNDING_EXCHANGES[exch].label,
-      data: timestamps.map(t => seriesMap[exch][t] ?? null),
-      borderColor: FUNDING_EXCHANGES[exch].color,
-      backgroundColor: FUNDING_EXCHANGES[exch].color + '20',
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.3,
-      spanGaps: true,
-    }));
+    : [
+      // OI-weighted benchmark line first
+      {
+        label: `${asset} Benchmark (OI-weighted)`,
+        data: timestamps.map(t => seriesMap['__benchmark']?.[t] ?? null),
+        borderColor: '#bc8cff',
+        backgroundColor: '#bc8cff20',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        tension: 0.3,
+        spanGaps: true,
+      },
+      // Individual exchange lines
+      ...exchangeKeys.map(exch => ({
+        label: FUNDING_EXCHANGES[exch].label,
+        data: timestamps.map(t => seriesMap[exch][t] ?? null),
+        borderColor: FUNDING_EXCHANGES[exch].color,
+        backgroundColor: FUNDING_EXCHANGES[exch].color + '20',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.3,
+        spanGaps: true,
+      })),
+    ];
 
   // Zero reference line
   datasets.push({
