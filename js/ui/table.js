@@ -3,7 +3,7 @@
 // ============================================================
 
 import { PROTOCOL_COLORS, PROTOCOL_LABELS } from '../config.js';
-import { formatAPY, formatUSD, formatUtilizationHtml } from '../utils.js';
+import { formatAPY, formatUSD, formatUtilizationHtml, weightedAverage } from '../utils.js';
 
 const sortState = {
   overview: { key: 'supplyAPY', dir: 'desc' },
@@ -46,6 +46,36 @@ function getTableSort(tableType) {
   return sortState[tableType] || sortState.overview;
 }
 
+function buildWeightedOverviewRow(markets) {
+  const totalSupply = markets.reduce((sum, m) => sum + (Number(m.tvl) || 0), 0);
+  const totalBorrow = markets.reduce((sum, m) => sum + (Number(m.totalBorrow) || 0), 0);
+  const supplyBenchmark = weightedAverage(markets, 'supplyAPY', 'tvl');
+  const borrowBenchmark = weightedAverage(markets, 'borrowAPY', 'totalBorrow');
+  const spread = borrowBenchmark - supplyBenchmark;
+  const utilization = totalSupply > 0 ? totalBorrow / totalSupply : 0;
+
+  return `
+    <tr class="weighted-row">
+      <td>
+        <div class="pool-cell">
+          <span class="protocol-dot weighted-dot"></span>
+          <div class="pool-info">
+            <span class="pool-name">Weighted Benchmark</span>
+            <span class="pool-protocol">${markets.length} filtered markets</span>
+          </div>
+        </div>
+      </td>
+      <td><span class="chain-badge">ALL</span></td>
+      <td><strong>ALL</strong></td>
+      <td><span class="apy-value supply-high">${formatAPY(supplyBenchmark)}</span></td>
+      <td><span class="apy-value">${formatAPY(borrowBenchmark)}</span></td>
+      <td class="tvl-value">${formatUSD(totalSupply)}</td>
+      <td><span class="apy-value">${formatAPY(spread)}</span></td>
+      <td>${formatUtilizationHtml(utilization)}</td>
+    </tr>
+  `;
+}
+
 // --- Overview Table ---
 export function renderOverviewTable(markets) {
   const tbody = document.getElementById('overview-table-body');
@@ -59,7 +89,9 @@ export function renderOverviewTable(markets) {
     return;
   }
 
-  tbody.innerHTML = sorted.map(m => `
+  const weightedRow = buildWeightedOverviewRow(sorted);
+
+  tbody.innerHTML = weightedRow + sorted.map(m => `
     <tr>
       <td>${poolCell(m)}</td>
       <td>${chainBadge(m.chain)}</td>

@@ -211,6 +211,28 @@ body {
   color: var(--text-muted);
 }
 
+.refresh-btn {
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 /* --- Tab Content --- */
 .tab-content { display: none; padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
 .tab-content.active { display: block; }
@@ -489,6 +511,18 @@ body {
 
 .data-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.data-table tbody tr.weighted-row {
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.data-table tbody tr.weighted-row:hover {
+  background: rgba(88, 166, 255, 0.14);
+}
+
+.weighted-dot {
+  background: var(--blue);
 }
 
 /* Protocol + Asset Cell */

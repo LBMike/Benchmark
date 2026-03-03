@@ -198,7 +198,7 @@ export const EVM_STABLECOIN_ADDRESSES = Object.fromEntries(
 );
 
 // --- Polling ---
-export const POLL_INTERVAL_MS = 60_000;
+export const POLL_INTERVAL_MS = 3_600_000;
 export const DEFAULT_MIN_TVL = 100_000_000;
 export const HISTORY_DAYS = 90;
 

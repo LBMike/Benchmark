@@ -40,6 +40,10 @@ const currentRangeByScope = {
   funding: 30,
 };
 
+const VISIBILITY_REFRESH_COOLDOWN_MS = 5 * 60_000;
+let refreshPromise = null;
+let lastRefreshAt = 0;
+
 // --- 데이터 폴링 (Lending) ---
 async function pollAll() {
   const [aaveResult, morphoResult, sparkResult, fluidResult, eulerResult, kaminoResult, jupiterResult, horizonResult] = await Promise.allSettled([
@@ -97,6 +101,26 @@ async function pollFunding() {
     for (const exch of Object.keys(FUNDING_EXCHANGES)) {
       store.setFundingStatus(exch, false, result.error);
     }
+  }
+}
+
+async function refreshLiveData() {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      await Promise.allSettled([pollAll(), pollFunding()]);
+    } catch (e) {
+      console.error('Live refresh error:', e);
+    } finally {
+      lastRefreshAt = Date.now();
+    }
+  })();
+
+  try {
+    await refreshPromise;
+  } finally {
+    refreshPromise = null;
   }
 }
 
@@ -332,6 +356,33 @@ function hideLoading() {
   if (overlay) overlay.classList.add('hidden');
 }
 
+function setRefreshButtonState(isLoading) {
+  const btn = document.getElementById('manual-refresh-btn');
+  if (!btn) return;
+  btn.disabled = isLoading;
+  btn.textContent = isLoading ? 'Refreshing...' : 'Refresh';
+}
+
+function initRefreshControls() {
+  const btn = document.getElementById('manual-refresh-btn');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      setRefreshButtonState(true);
+      try {
+        await refreshLiveData();
+      } finally {
+        setRefreshButtonState(false);
+      }
+    });
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (Date.now() - lastRefreshAt < VISIBILITY_REFRESH_COOLDOWN_MS) return;
+    refreshLiveData();
+  });
+}
+
 // --- Init ---
 async function init() {
   initTabs();
@@ -340,6 +391,7 @@ async function init() {
   initChartCategoryTabs();
   initTableSort();
   initSortListener();
+  initRefreshControls();
 
   // Funding 자산 탭 초기화
   initFundingAssetTabs((asset) => {
@@ -351,7 +403,9 @@ async function init() {
   store.subscribe(onStoreUpdate);
 
   // 초기 데이터 로드 (Lending + Funding 병렬)
-  await Promise.allSettled([pollAll(), pollFunding()]);
+  setRefreshButtonState(true);
+  await refreshLiveData();
+  setRefreshButtonState(false);
   hideLoading();
 
   // 히스토리 로드 (백그라운드, Lending + Funding 병렬)
@@ -375,8 +429,9 @@ async function init() {
   });
 
   // 폴링 시작
-  setInterval(pollAll, POLL_INTERVAL_MS);
-  setInterval(pollFunding, POLL_INTERVAL_MS);
+  setInterval(() => {
+    refreshLiveData();
+  }, POLL_INTERVAL_MS);
 }
 
 document.addEventListener('DOMContentLoaded', init);
