@@ -315,6 +315,9 @@ export function renderTvlChart(historyData, markets, range = 90) {
   const canvas = document.getElementById('tvl-chart');
   if (!canvas) return;
 
+  // Sky는 랜딩 풀이 아니므로 borrow 집계에서 제외
+  const BORROW_EXCLUDE = new Set(['sky-ethereum-usds']);
+
   const cutoff = Date.now() / 1000 - range * 86400;
   const supplyUsd = historyData.supplyUsd || {};
   const borrowUsd = historyData.borrowUsd || {};
@@ -331,7 +334,9 @@ export function renderTvlChart(historyData, markets, range = 90) {
   for (const m of markets) {
     if (!histMarketIds.has(m.marketId)) {
       nonHistSupply += m.tvl || 0;
-      nonHistBorrow += m.totalBorrow || 0;
+      if (!BORROW_EXCLUDE.has(m.marketId)) {
+        nonHistBorrow += m.totalBorrow || 0;
+      }
     }
   }
 
@@ -351,6 +356,7 @@ export function renderTvlChart(historyData, markets, range = 90) {
   }
 
   for (const [marketId, points] of Object.entries(borrowUsd)) {
+    if (BORROW_EXCLUDE.has(marketId)) continue;
     borrowDayMaps[marketId] = {};
     for (const p of points) {
       if (p.x < cutoff) continue;

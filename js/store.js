@@ -57,16 +57,14 @@ class Store {
 
   getBenchmarks(scope = 'overview') {
     const markets = this.getFilteredMarkets(scope);
+    // Sky는 랜딩 풀이 아니므로 borrow/utilization 벤치마크에서 제외
+    const lendingMarkets = markets.filter(m => m.protocol !== 'sky');
     const supplyBenchmark = weightedAverage(markets, 'supplyAPY', 'tvl');
-    const borrowBenchmark = weightedAverage(markets, 'borrowAPY', 'totalBorrow');
+    const borrowBenchmark = weightedAverage(lendingMarkets, 'borrowAPY', 'totalBorrow');
     const fundingSpread = borrowBenchmark - supplyBenchmark;
     const totalSupply = markets.reduce((s, m) => s + m.tvl, 0);
-    const totalBorrow = markets.reduce((s, m) => s + m.totalBorrow, 0);
-    // Utilization: Sky 제외 (supply=SSR, borrow=전체 Vat 부채 → 비율 왜곡)
-    const utilMarkets = markets.filter(m => m.utilization <= 1);
-    const utilSupply = utilMarkets.reduce((s, m) => s + m.tvl, 0);
-    const utilBorrow = utilMarkets.reduce((s, m) => s + m.totalBorrow, 0);
-    const utilizationBenchmark = utilSupply > 0 ? utilBorrow / utilSupply : 0;
+    const totalBorrow = lendingMarkets.reduce((s, m) => s + m.totalBorrow, 0);
+    const utilizationBenchmark = totalSupply > 0 ? totalBorrow / totalSupply : 0;
     return { supplyBenchmark, borrowBenchmark, fundingSpread, totalSupply, totalBorrow, utilizationBenchmark, marketCount: markets.length };
   }
 
