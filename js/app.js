@@ -36,6 +36,13 @@ import {
   getCurrentFundingAsset,
 } from './ui/funding.js';
 
+// YTD: 1월 1일부터 오늘까지 일수
+function getYTDDays() {
+  const now = new Date();
+  const jan1 = new Date(now.getFullYear(), 0, 1);
+  return Math.ceil((now - jan1) / 86400000);
+}
+
 const currentRangeByScope = {
   overview: 90,
   supply: 90,
@@ -137,7 +144,7 @@ async function refreshLiveData() {
 async function loadHistory() {
   const [aaveHist, morphoHist] = await Promise.allSettled([
     fetchAaveHistory(),
-    fetchMorphoHistory(90),
+    fetchMorphoHistory(365),
   ]);
 
   if (aaveHist.status === 'fulfilled') {
@@ -287,7 +294,8 @@ function initTimeRangeBtns() {
       btn.addEventListener('click', () => {
         group.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        currentRangeByScope[scope] = parseInt(btn.dataset.range) || 90;
+        const rangeVal = btn.dataset.range;
+        currentRangeByScope[scope] = rangeVal === 'ytd' ? getYTDDays() : (parseInt(rangeVal) || 90);
 
         const supplyHistory = store.getHistory('supply');
         const borrowHistory = store.getHistory('borrow');

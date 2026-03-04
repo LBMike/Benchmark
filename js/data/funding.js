@@ -7,7 +7,7 @@ import { FUNDING_API, FUNDING_SYMBOLS, FUNDING_ASSETS } from '../config.js';
 
 const TIMEOUT = 10000;
 const HISTORY_TIMEOUT = 15000;
-const HISTORY_DAYS = 90;
+const HISTORY_DAYS = 365;
 
 function getAssetSymbols(exchange, asset) {
   const raw = FUNDING_SYMBOLS[exchange]?.[asset];

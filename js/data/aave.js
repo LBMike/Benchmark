@@ -126,13 +126,13 @@ export async function fetchAaveHistory() {
             supplyAPYHistory(request: {
               market: "${marketAddr}",
               underlyingToken: "${tokenAddr}",
-              window: LAST_SIX_MONTHS,
+              window: LAST_YEAR,
               chainId: ${chain.id}
             }) { avgRate { value } date }
             borrowAPYHistory(request: {
               market: "${marketAddr}",
               underlyingToken: "${tokenAddr}",
-              window: LAST_SIX_MONTHS,
+              window: LAST_YEAR,
               chainId: ${chain.id}
             }) { avgRate { value } date }
           }`);
