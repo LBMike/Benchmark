@@ -568,8 +568,9 @@ const STABLECOIN_CHART_COLORS = {
   USDe: '#c4a2fc',
   PYUSD: '#0070e0',
   RLUSD: '#00a3ff',
-  WETH: '#627eea',
 };
+
+const STABLECOIN_CHART_EXCLUDE = new Set(['WETH']);
 
 export function renderStablecoinChart(historyData, markets, range = 90) {
   const canvas = document.getElementById('stablecoin-chart');
@@ -591,7 +592,7 @@ export function renderStablecoinChart(historyData, markets, range = 90) {
 
   for (const [marketId, points] of Object.entries(historyData.supply || {})) {
     const symbol = symbolByMarketId[marketId];
-    if (!symbol) continue;
+    if (!symbol || STABLECOIN_CHART_EXCLUDE.has(symbol)) continue;
 
     if (!groupBySymbol[symbol]) groupBySymbol[symbol] = {};
     groupBySymbol[symbol][marketId] = {};
