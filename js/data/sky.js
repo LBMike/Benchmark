@@ -1,7 +1,8 @@
 // ============================================================
-// Sky Protocol — DefiLlama (Supply APY) + On-chain Jug/Vat (Borrow APY)
+// Sky Protocol — Full Debt-Weighted Borrow Rate
 // Supply: sUSDS (SSR) TVL + APY from DefiLlama
-// Borrow: Debt-weighted avg stability fee from MakerDAO Jug + Vat
+// Borrow: ALL active ilks — Core (Jug), Allocators (Block Analitica → SSR fallback)
+// Excludes: RWA (winding down, 0% fee)
 // ============================================================
 
 import { SKY_DEFILLAMA_POOLS, CHAIN_NAME_TO_ID, RPC_URLS } from '../config.js';
@@ -9,7 +10,7 @@ import { normalizeMarket } from '../utils.js';
 
 const DEFILLAMA_CHART_URL = 'https://yields.llama.fi/chart';
 
-// ── Sky (MakerDAO) on-chain contracts ──
+// ── On-chain contracts ──
 const JUG_ADDRESS = '0x19c0976f590D67707E62397C87829d896Dc0f1F1';
 const VAT_ADDRESS = '0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B';
 
@@ -22,13 +23,27 @@ const VAT_ABI = [
   'function ilks(bytes32) view returns (uint256 Art, uint256 rate, uint256 spot, uint256 line, uint256 dust)',
 ];
 
-// Major Sky/Maker vault types — covers most outstanding debt
-const SKY_ILKS = [
+// ── Ilk categories ──
+
+// Core crypto vaults + Staking — real stability fee from Jug
+const CORE_ILKS = [
   'ETH-A', 'ETH-B', 'ETH-C',
   'WSTETH-A', 'WSTETH-B',
   'WBTC-A', 'WBTC-B', 'WBTC-C',
   'RETH-A',
+  'LSEV2-SKY-A',
 ];
+
+// Allocator / PSM — on-chain Jug duty = 0%, effective APY from revenue
+const ALLOCATOR_ILKS = [
+  'LITE-PSM-USDC-A',
+  'ALLOCATOR-SPARK-A',
+  'ALLOCATOR-BLOOM-A',
+  'ALLOCATOR-OBEX-A',
+];
+
+const ALLOCATOR_SET = new Set(ALLOCATOR_ILKS);
+const ALL_ILKS = [...CORE_ILKS, ...ALLOCATOR_ILKS];
 
 const SECONDS_PER_YEAR = 31_536_000;
 const WAD = BigInt('1000000000000000000');          // 1e18
@@ -44,20 +59,18 @@ function getProvider() {
   return _provider;
 }
 
-// ── Fetch debt-weighted average stability fee from Jug + Vat ──
-async function fetchSkyBorrowRate() {
+// ── Fetch all ilk data (debt + stability fee) from Jug + Vat ──
+async function fetchAllIlkData() {
   try {
     const provider = getProvider();
     const jug = new ethers.Contract(JUG_ADDRESS, JUG_ABI, provider);
     const vat = new ethers.Contract(VAT_ADDRESS, VAT_ABI, provider);
 
-    // Global base rate (usually 0)
     const base = await jug.base();
     const baseNum = Number(base);
 
-    // Fetch duty + debt for each ilk in parallel
     const results = await Promise.allSettled(
-      SKY_ILKS.map(async (ilk) => {
+      ALL_ILKS.map(async (ilk) => {
         const ilkBytes = ethers.encodeBytes32String(ilk);
         const [jugData, vatData] = await Promise.all([
           jug.ilks(ilkBytes),
@@ -65,39 +78,75 @@ async function fetchSkyBorrowRate() {
         ]);
 
         const duty = jugData.duty;   // BigInt (ray)
-        const art  = vatData.Art;     // BigInt (wad) — normalized debt
-        const rate = vatData.rate;    // BigInt (ray) — rate accumulator
+        const art  = vatData.Art;     // BigInt (wad)
+        const rate = vatData.rate;    // BigInt (ray)
 
-        // Total debt in USD ≈ Art × rate / RAY / WAD (stablecoin ≈ $1)
         const debtUsd = Number(art * rate / RAY / WAD);
 
-        // Annual stability fee = ((base + duty) / 1e27) ^ SECONDS_PER_YEAR - 1
         const perSecRate = (baseNum + Number(duty)) / RAY_NUM;
-        const annualFee = (Math.pow(perSecRate, SECONDS_PER_YEAR) - 1) * 100; // percent
+        const annualFee = (Math.pow(perSecRate, SECONDS_PER_YEAR) - 1) * 100;
 
-        return { ilk, annualFee, debtUsd };
+        return {
+          ilk,
+          annualFee,
+          debtUsd,
+          isAllocator: ALLOCATOR_SET.has(ilk),
+        };
       })
     );
 
-    let weightedSum = 0;
-    let totalDebt = 0;
-
+    const ilkData = [];
     for (const r of results) {
-      if (r.status !== 'fulfilled') continue;
-      const { annualFee, debtUsd } = r.value;
-      if (debtUsd <= 0 || isNaN(annualFee) || annualFee <= 0) continue;
-      weightedSum += annualFee * debtUsd;
-      totalDebt += debtUsd;
+      if (r.status === 'fulfilled' && r.value.debtUsd > 0) {
+        ilkData.push(r.value);
+      }
     }
-
-    if (totalDebt <= 0) return null;
-
-    return {
-      borrowAPY: weightedSum / totalDebt, // debt-weighted avg (%)
-      totalDebt,                           // total outstanding debt ($)
-    };
+    return ilkData.length > 0 ? ilkData : null;
   } catch (e) {
-    console.warn('Sky on-chain borrow rate fetch failed:', e.message);
+    console.warn('Sky on-chain ilk data fetch failed:', e.message);
+    return null;
+  }
+}
+
+// ── Try Block Analitica API for allocator effective APYs ──
+// info.sky.money backend — may be CORS-blocked from browser origins
+const BA_GROUPS_URL = 'https://info-sky.blockanalitica.com/groups/';
+
+// Block Analitica group slug → ilk name mapping
+const GROUP_TO_ILK = {
+  stablecoins: 'LITE-PSM-USDC-A',
+  spark: 'ALLOCATOR-SPARK-A',
+  grove: 'ALLOCATOR-BLOOM-A',
+  bloom: 'ALLOCATOR-BLOOM-A',
+  obex: 'ALLOCATOR-OBEX-A',
+};
+
+async function fetchAllocatorAPYs() {
+  try {
+    const res = await fetch(`${BA_GROUPS_URL}?days_ago=1&order=-debt`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const groups = await res.json();
+    if (!Array.isArray(groups)) return null;
+
+    const apyMap = {};
+    for (const g of groups) {
+      const slug = (g.slug || g.name || '').toLowerCase();
+      for (const [key, ilk] of Object.entries(GROUP_TO_ILK)) {
+        if (slug.includes(key)) {
+          // APY may be decimal (0.0335) or percent (3.35)
+          const raw = Number(g.apy ?? g.revenue_rate ?? 0);
+          if (raw > 0) {
+            apyMap[ilk] = raw < 1 ? raw * 100 : raw;
+          }
+        }
+      }
+    }
+    return Object.keys(apyMap).length > 0 ? apyMap : null;
+  } catch (e) {
+    // CORS block expected — silent fallback
+    console.warn('Block Analitica API (CORS expected):', e.message);
     return null;
   }
 }
@@ -138,7 +187,6 @@ async function fetchSkySupplyData() {
 
   let weightedSupply = 0;
   let totalTvl = 0;
-
   for (const p of pools) {
     weightedSupply += p.supplyAPY * p.tvl;
     totalTvl += p.tvl;
@@ -152,14 +200,16 @@ async function fetchSkySupplyData() {
 
 // ── Main entry ──
 export async function fetchSkyData() {
-  // Fetch supply (DefiLlama) + borrow (on-chain) in parallel
-  const [supplyResult, borrowResult] = await Promise.allSettled([
+  // Fetch supply (DefiLlama), ilk data (on-chain), allocator APYs (BA API) in parallel
+  const [supplyResult, ilkResult, allocatorResult] = await Promise.allSettled([
     fetchSkySupplyData(),
-    fetchSkyBorrowRate(),
+    fetchAllIlkData(),
+    fetchAllocatorAPYs(),
   ]);
 
-  const supplyData = supplyResult.status === 'fulfilled' ? supplyResult.value : null;
-  const borrowData = borrowResult.status === 'fulfilled' ? borrowResult.value : null;
+  const supplyData  = supplyResult.status  === 'fulfilled' ? supplyResult.value  : null;
+  const ilkData     = ilkResult.status     === 'fulfilled' ? ilkResult.value     : null;
+  const allocAPYs   = allocatorResult.status === 'fulfilled' ? allocatorResult.value : null;
 
   if (!supplyData) {
     return { data: [], error: 'No supply data' };
@@ -167,16 +217,34 @@ export async function fetchSkyData() {
 
   const { avgSupplyAPY, totalTvl } = supplyData;
 
-  // Use real on-chain borrow rate if available, else fall back to estimate
   let borrowAPY, totalBorrow, utilization;
 
-  if (borrowData) {
-    borrowAPY = borrowData.borrowAPY;
-    totalBorrow = borrowData.totalDebt;
+  if (ilkData) {
+    let weightedSum = 0;
+    let totalDebt = 0;
+
+    for (const ilk of ilkData) {
+      let fee = ilk.annualFee;
+
+      // Allocator/PSM ilks: on-chain Jug duty = 0%
+      // 1) Use Block Analitica effective APY if available
+      // 2) Else use SSR rate (≈ avgSupplyAPY) as proxy
+      if (ilk.isAllocator && fee < 0.01) {
+        fee = allocAPYs?.[ilk.ilk] ?? avgSupplyAPY;
+      }
+
+      if (ilk.debtUsd > 0 && fee > 0) {
+        weightedSum += fee * ilk.debtUsd;
+        totalDebt += ilk.debtUsd;
+      }
+    }
+
+    borrowAPY   = totalDebt > 0 ? weightedSum / totalDebt : avgSupplyAPY;
+    totalBorrow = totalDebt;
     utilization = totalTvl > 0 ? totalBorrow / totalTvl : 0;
   } else {
-    // Fallback (shouldn't normally reach here)
-    borrowAPY = avgSupplyAPY * 1.2;
+    // Fallback when on-chain fetch fails entirely
+    borrowAPY   = avgSupplyAPY * 1.2;
     totalBorrow = totalTvl * 0.7;
     utilization = 0.7;
   }
