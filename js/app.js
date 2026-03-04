@@ -9,6 +9,7 @@ import { fetchMorphoData, fetchMorphoHistory } from './data/morpho.js';
 import { fetchSparkData } from './data/spark.js';
 import { fetchFluidData } from './data/fluid.js';
 import { fetchEulerData } from './data/euler.js';
+import { fetchCompoundData } from './data/compound.js';
 import { fetchHorizonData } from './data/horizon.js';
 import { fetchSkyData } from './data/sky.js';
 import { fetchKaminoData } from './data/kamino.js';
@@ -48,12 +49,13 @@ let lastRefreshAt = 0;
 
 // --- 데이터 폴링 (Lending) ---
 async function pollAll() {
-  const [aaveResult, morphoResult, sparkResult, fluidResult, eulerResult, kaminoResult, jupiterResult, horizonResult, skyResult] = await Promise.allSettled([
+  const [aaveResult, morphoResult, sparkResult, fluidResult, eulerResult, compoundResult, kaminoResult, jupiterResult, horizonResult, skyResult] = await Promise.allSettled([
     fetchAaveData(),
     fetchMorphoData(),
     fetchSparkData(),
     fetchFluidData(),
     fetchEulerData(),
+    fetchCompoundData(),
     fetchKaminoData(),
     fetchJupiterData(),
     fetchHorizonData(),
@@ -70,6 +72,7 @@ async function pollAll() {
   const spark = extract(sparkResult);
   const fluid = extract(fluidResult);
   const euler = extract(eulerResult);
+  const compound = extract(compoundResult);
   const kamino = extract(kaminoResult);
   const jupiter = extract(jupiterResult);
   const horizon = extract(horizonResult);
@@ -81,13 +84,14 @@ async function pollAll() {
   store.setProtocolStatus('spark', !spark.error, spark.error);
   store.setProtocolStatus('fluid', !fluid.error, fluid.error);
   store.setProtocolStatus('euler', !euler.error, euler.error);
+  store.setProtocolStatus('compound', !compound.error, compound.error);
   store.setProtocolStatus('kamino', !kamino.error, kamino.error);
   store.setProtocolStatus('jupiter', !jupiter.error, jupiter.error);
   store.setProtocolStatus('horizon', !horizon.error, horizon.error);
   store.setProtocolStatus('sky', !sky.error, sky.error);
 
   // 마켓 데이터 병합
-  const allMarkets = [...aave.data, ...morpho.data, ...spark.data, ...fluid.data, ...euler.data, ...kamino.data, ...jupiter.data, ...horizon.data, ...sky.data];
+  const allMarkets = [...aave.data, ...morpho.data, ...spark.data, ...fluid.data, ...euler.data, ...compound.data, ...kamino.data, ...jupiter.data, ...horizon.data, ...sky.data];
   store.setMarkets(allMarkets);
 
   updateLastUpdated();

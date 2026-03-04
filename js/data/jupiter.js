@@ -41,16 +41,23 @@ export async function fetchJupiterData() {
       const symbol = p.symbol;
       const supplyAPY = Number(p.apy) || 0;
       const tvl = Number(p.tvlUsd) || 0;
-
-      // DefiLlama doesn't provide borrow rate directly
-      // Estimate: borrowAPY ≈ supplyAPY / utilization (typical 60-80%)
-      // Or use apyBorrow if available
-      const borrowAPY = Number(p.apyBorrow) || 0;
       const totalBorrow = Number(p.totalBorrowUsd) || 0;
       const utilization = tvl > 0 ? totalBorrow / tvl : 0;
 
+      // DefiLlama doesn't provide borrow rate directly
+      // Use reported apyBorrow first, otherwise estimate from utilization.
+      const reportedBorrowAPY = Number(p.apyBorrow);
+      let borrowAPY;
+      if (Number.isFinite(reportedBorrowAPY) && reportedBorrowAPY > 0) {
+        borrowAPY = reportedBorrowAPY;
+      } else if (utilization > 0.01) {
+        borrowAPY = supplyAPY / utilization;
+      } else {
+        borrowAPY = supplyAPY * 1.4;
+      }
+
       // 비정상 APY 필터
-      if (supplyAPY > 100 || supplyAPY < 0) continue;
+      if (supplyAPY > 100 || supplyAPY < 0 || borrowAPY > 100 || borrowAPY < 0) continue;
 
       results.push(normalizeMarket(
         'jupiter', 'solana', 101, symbol,

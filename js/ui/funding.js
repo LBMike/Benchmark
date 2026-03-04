@@ -37,7 +37,7 @@ function weightedAvgFundingByOi(assetRates) {
   return null;
 }
 
-// ── Summary Cards (GOLD only: OI-weighted, others: simple avg across exchanges) ──
+// ── Summary Cards (all assets: OI-weighted across exchanges) ──
 
 export function renderFundingCards(fundingRates) {
   for (const asset of FUNDING_ASSETS) {
@@ -50,9 +50,7 @@ export function renderFundingCards(fundingRates) {
       continue;
     }
 
-    const avg = asset === 'GOLD'
-      ? weightedAvgFundingByOi(assetRates)
-      : assetRates.reduce((s, r) => s + r.fundingRatePct, 0) / assetRates.length;
+    const avg = weightedAvgFundingByOi(assetRates);
     if (avg == null) {
       el.innerHTML = '—';
       continue;
