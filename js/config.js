@@ -77,9 +77,7 @@ for (const [chain, tokens] of Object.entries(STABLECOIN_ADDRESSES)) {
 
 // Non-stablecoin assets tracked only on Aave (need USD TVL from API)
 export const AAVE_EXTRA_ASSETS = {
-  ethereum: {
-    WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-  },
+  ethereum: {},
 };
 
 // Aave Horizon (separate RWA market) — DefiLlama pool IDs
