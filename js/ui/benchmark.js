@@ -8,6 +8,7 @@ import { formatAPY, formatUSD, formatUtilization, utilizationColor, annualizeFun
 let benchmarkChart = null;
 let tvlChart = null;
 let utilizationChart = null;
+let stablecoinChart = null;
 let protocolChart = null;
 let currentCategory = 'benchmark';
 
@@ -556,17 +557,125 @@ export function renderUtilizationChart(historyData, markets, range = 90) {
   });
 }
 
+// ══════════════════════════════════════════════════════════════
+// By Stablecoin 카테고리: 스테이블코인별 TVL 가중 Supply Benchmark 라인
+// ══════════════════════════════════════════════════════════════
+
+const STABLECOIN_CHART_COLORS = {
+  USDC: '#2775ca',
+  USDT: '#26a17b',
+  USDS: '#f5ac37',
+  USDe: '#c4a2fc',
+  PYUSD: '#0070e0',
+  RLUSD: '#00a3ff',
+  WETH: '#627eea',
+};
+
+export function renderStablecoinChart(historyData, markets, range = 90) {
+  const canvas = document.getElementById('stablecoin-chart');
+  if (!canvas) return;
+
+  const cutoff = Date.now() / 1000 - range * 86400;
+
+  // 마켓별 TVL 가중치 + 스테이블코인 심볼 매핑
+  const tvlByMarketId = {};
+  const symbolByMarketId = {};
+  for (const m of markets) {
+    tvlByMarketId[m.marketId] = m.tvl;
+    symbolByMarketId[m.marketId] = m.asset;
+  }
+
+  // 스테이블코인별 → { marketId: { dayTs: apyValue } } 그룹핑
+  const groupBySymbol = {}; // { symbol: { marketId: { day: apy } } }
+  const allDays = new Set();
+
+  for (const [marketId, points] of Object.entries(historyData.supply || {})) {
+    const symbol = symbolByMarketId[marketId];
+    if (!symbol) continue;
+
+    if (!groupBySymbol[symbol]) groupBySymbol[symbol] = {};
+    groupBySymbol[symbol][marketId] = {};
+
+    for (const p of points) {
+      if (p.x < cutoff) continue;
+      const day = Math.floor(p.x / 86400) * 86400;
+      groupBySymbol[symbol][marketId][day] = p.y;
+      allDays.add(day);
+    }
+  }
+
+  const days = [...allDays].sort((a, b) => a - b);
+
+  if (days.length === 0) {
+    if (stablecoinChart) { stablecoinChart.destroy(); stablecoinChart = null; }
+    return;
+  }
+
+  // 각 스테이블코인에 대해 일별 TVL 가중평균 Supply APR 계산
+  const datasets = [];
+  const symbols = Object.keys(groupBySymbol).sort();
+
+  for (const symbol of symbols) {
+    const marketDayMaps = groupBySymbol[symbol];
+    const values = [];
+
+    for (const day of days) {
+      let wSum = 0, wTotal = 0;
+      for (const [marketId, dayMap] of Object.entries(marketDayMaps)) {
+        if (dayMap[day] != null) {
+          const weight = tvlByMarketId[marketId] || 0;
+          if (weight > 0) {
+            wSum += dayMap[day] * weight;
+            wTotal += weight;
+          }
+        }
+      }
+      values.push(wTotal > 0 ? wSum / wTotal : null);
+    }
+
+    // 데이터가 전부 null이면 건너뜀
+    if (values.every(v => v == null)) continue;
+
+    const color = STABLECOIN_CHART_COLORS[symbol] || '#888';
+    datasets.push({
+      label: `${symbol} Supply Benchmark`,
+      data: values,
+      borderColor: color,
+      backgroundColor: color + '20',
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3,
+      spanGaps: true,
+    });
+  }
+
+  const labels = days.map(t => {
+    const d = new Date(t * 1000);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  });
+
+  if (stablecoinChart) stablecoinChart.destroy();
+
+  stablecoinChart = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: baseChartOptions(),
+  });
+}
+
 // ── 카테고리 토글 ──
 export function setChartCategory(category) {
   currentCategory = category;
   const benchmarkWrapper = document.getElementById('benchmark-chart-wrapper');
   const tvlWrapper = document.getElementById('tvl-chart-wrapper');
   const utilizationWrapper = document.getElementById('utilization-chart-wrapper');
+  const stablecoinWrapper = document.getElementById('stablecoin-chart-wrapper');
   const protocolWrapper = document.getElementById('protocol-chart-wrapper');
 
   if (benchmarkWrapper) benchmarkWrapper.style.display = category === 'benchmark' ? '' : 'none';
   if (tvlWrapper) tvlWrapper.style.display = category === 'tvl' ? '' : 'none';
   if (utilizationWrapper) utilizationWrapper.style.display = category === 'utilization' ? '' : 'none';
+  if (stablecoinWrapper) stablecoinWrapper.style.display = category === 'stablecoin' ? '' : 'none';
   if (protocolWrapper) protocolWrapper.style.display = category === 'protocol' ? '' : 'none';
 }
 

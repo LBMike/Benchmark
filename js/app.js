@@ -18,6 +18,7 @@ import {
   renderBenchmarkRateChart,
   renderTvlChart,
   renderUtilizationChart,
+  renderStablecoinChart,
   renderProtocolRateChart,
   setChartCategory,
   updateProtocolStatus,
@@ -185,6 +186,7 @@ function onStoreUpdate(data) {
   );
   renderTvlChart(data.history, data.marketsByScope?.overview || data.markets, currentRangeByScope.overview);
   renderUtilizationChart(data.history, data.marketsByScope?.overview || data.markets, currentRangeByScope.overview);
+  renderStablecoinChart(data.history, data.marketsByScope?.overview || data.markets, currentRangeByScope.overview);
   renderProtocolRateChart(data.history, currentRangeByScope.overview);
   renderSupplyHistoryChart(data.history.supply, currentRangeByScope.supply);
   renderBorrowHistoryChart(data.history.borrow, currentRangeByScope.borrow);
@@ -298,6 +300,7 @@ function initTimeRangeBtns() {
           );
           renderTvlChart(histAll, overviewMarkets, currentRangeByScope.overview);
           renderUtilizationChart(histAll, overviewMarkets, currentRangeByScope.overview);
+          renderStablecoinChart(histAll, overviewMarkets, currentRangeByScope.overview);
           renderProtocolRateChart(histAll, currentRangeByScope.overview);
           return;
         }
