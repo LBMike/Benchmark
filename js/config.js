@@ -87,6 +87,12 @@ export const HORIZON_DEFILLAMA_POOLS = {
   RLUSD: '98d07333-f5e4-4a48-8061-cfb4b73ccf79',
 };
 
+// Sky Protocol (SSR + SparkLend) — DefiLlama pool IDs for USDS
+export const SKY_DEFILLAMA_POOLS = {
+  'USDS-SSR': 'd8c4eff5-c8a9-46fc-a888-057c4c668e72',       // sUSDS (Sky Savings Rate) — Ethereum
+  'USDS-SparkLend': '0ed981dc-b49d-426d-ade5-6014728b1ef9',  // SparkLend USDS — Ethereum
+};
+
 export const PROTOCOL_COLORS = {
   'aave-v3': '#B6509E',
   morpho: '#2470FF',
@@ -96,6 +102,7 @@ export const PROTOCOL_COLORS = {
   kamino: '#44D4B0',
   jupiter: '#93D43F',
   horizon: '#2564EB',
+  sky: '#F5AC37',
 };
 
 export const PROTOCOL_LABELS = {
@@ -107,6 +114,7 @@ export const PROTOCOL_LABELS = {
   kamino: 'Kamino',
   jupiter: 'Jupiter',
   horizon: 'Horizon',
+  sky: 'Sky',
 };
 
 // --- Euler V2 Subgraph Endpoints (Goldsky, free, no key) ---

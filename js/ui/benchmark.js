@@ -689,7 +689,7 @@ export function updateProtocolStatus(statuses) {
   const container = document.getElementById('protocol-status');
   if (!container) return;
 
-  const protocols = ['aave-v3', 'morpho', 'spark', 'fluid', 'euler', 'kamino', 'jupiter'];
+  const protocols = ['aave-v3', 'morpho', 'spark', 'fluid', 'euler', 'kamino', 'jupiter', 'sky'];
   container.innerHTML = protocols.map(p => {
     const s = statuses[p];
     const cls = !s ? 'loading' : s.ok ? 'ok' : 'error';

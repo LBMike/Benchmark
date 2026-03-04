@@ -10,6 +10,7 @@ import { fetchSparkData } from './data/spark.js';
 import { fetchFluidData } from './data/fluid.js';
 import { fetchEulerData } from './data/euler.js';
 import { fetchHorizonData } from './data/horizon.js';
+import { fetchSkyData } from './data/sky.js';
 import { fetchKaminoData } from './data/kamino.js';
 import { fetchJupiterData } from './data/jupiter.js';
 import { fetchFundingRates, fetchAllFundingHistory } from './data/funding.js';
@@ -47,7 +48,7 @@ let lastRefreshAt = 0;
 
 // --- 데이터 폴링 (Lending) ---
 async function pollAll() {
-  const [aaveResult, morphoResult, sparkResult, fluidResult, eulerResult, kaminoResult, jupiterResult, horizonResult] = await Promise.allSettled([
+  const [aaveResult, morphoResult, sparkResult, fluidResult, eulerResult, kaminoResult, jupiterResult, horizonResult, skyResult] = await Promise.allSettled([
     fetchAaveData(),
     fetchMorphoData(),
     fetchSparkData(),
@@ -56,6 +57,7 @@ async function pollAll() {
     fetchKaminoData(),
     fetchJupiterData(),
     fetchHorizonData(),
+    fetchSkyData(),
   ]);
 
   const extract = (result) => {
@@ -71,6 +73,7 @@ async function pollAll() {
   const kamino = extract(kaminoResult);
   const jupiter = extract(jupiterResult);
   const horizon = extract(horizonResult);
+  const sky = extract(skyResult);
 
   // 프로토콜 상태 업데이트
   store.setProtocolStatus('aave-v3', !aave.error, aave.error);
@@ -81,9 +84,10 @@ async function pollAll() {
   store.setProtocolStatus('kamino', !kamino.error, kamino.error);
   store.setProtocolStatus('jupiter', !jupiter.error, jupiter.error);
   store.setProtocolStatus('horizon', !horizon.error, horizon.error);
+  store.setProtocolStatus('sky', !sky.error, sky.error);
 
   // 마켓 데이터 병합
-  const allMarkets = [...aave.data, ...morpho.data, ...spark.data, ...fluid.data, ...euler.data, ...kamino.data, ...jupiter.data, ...horizon.data];
+  const allMarkets = [...aave.data, ...morpho.data, ...spark.data, ...fluid.data, ...euler.data, ...kamino.data, ...jupiter.data, ...horizon.data, ...sky.data];
   store.setMarkets(allMarkets);
 
   updateLastUpdated();
