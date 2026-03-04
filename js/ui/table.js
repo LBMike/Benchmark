@@ -51,7 +51,11 @@ function buildWeightedOverviewRow(markets) {
   const totalBorrow = markets.reduce((sum, m) => sum + (Number(m.totalBorrow) || 0), 0);
   const supplyBenchmark = weightedAverage(markets, 'supplyAPY', 'tvl');
   const borrowBenchmark = weightedAverage(markets, 'borrowAPY', 'totalBorrow');
-  const utilization = totalSupply > 0 ? totalBorrow / totalSupply : 0;
+  // Sky 제외 utilization (랜딩 풀이 아니므로 비율 왜곡)
+  const lendingMarkets = markets.filter(m => m.protocol !== 'sky');
+  const lendingSupply = lendingMarkets.reduce((sum, m) => sum + (Number(m.tvl) || 0), 0);
+  const lendingBorrow = lendingMarkets.reduce((sum, m) => sum + (Number(m.totalBorrow) || 0), 0);
+  const utilization = lendingSupply > 0 ? lendingBorrow / lendingSupply : 0;
 
   return `
     <tr class="weighted-row">
