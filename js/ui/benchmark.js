@@ -447,6 +447,9 @@ export function renderUtilizationChart(historyData, markets, range = 90) {
   const canvas = document.getElementById('utilization-chart');
   if (!canvas) return;
 
+  // Sky USDS 제외 (supply=SSR, borrow=전체 Vat 부채 → utilization 왜곡)
+  const UTIL_EXCLUDE = new Set(['sky-ethereum-usds']);
+
   const cutoff = Date.now() / 1000 - range * 86400;
   const supplyUsd = historyData.supplyUsd || {};
   const borrowUsd = historyData.borrowUsd || {};
@@ -461,6 +464,7 @@ export function renderUtilizationChart(historyData, markets, range = 90) {
   let nonHistSupply = 0;
   let nonHistBorrow = 0;
   for (const m of markets) {
+    if (UTIL_EXCLUDE.has(m.marketId)) continue;
     if (!histMarketIds.has(m.marketId)) {
       nonHistSupply += m.tvl || 0;
       nonHistBorrow += m.totalBorrow || 0;
@@ -473,6 +477,7 @@ export function renderUtilizationChart(historyData, markets, range = 90) {
   const allDays = new Set();
 
   for (const [marketId, points] of Object.entries(supplyUsd)) {
+    if (UTIL_EXCLUDE.has(marketId)) continue;
     supplyDayMaps[marketId] = {};
     for (const p of points) {
       if (p.x < cutoff) continue;
@@ -483,6 +488,7 @@ export function renderUtilizationChart(historyData, markets, range = 90) {
   }
 
   for (const [marketId, points] of Object.entries(borrowUsd)) {
+    if (UTIL_EXCLUDE.has(marketId)) continue;
     borrowDayMaps[marketId] = {};
     for (const p of points) {
       if (p.x < cutoff) continue;
