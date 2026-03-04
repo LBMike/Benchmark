@@ -8,7 +8,7 @@ import {
 } from '../config.js';
 import { rayToAPY, normalizeMarket } from '../utils.js';
 
-const STABLECOINS = ['USDC', 'USDT', 'USDS'];
+const STABLECOINS = ['USDC', 'USDT', 'USDS', 'DAI'];
 let _provider = null;
 
 function getProvider() {
