@@ -51,7 +51,6 @@ function buildWeightedOverviewRow(markets) {
   const totalBorrow = markets.reduce((sum, m) => sum + (Number(m.totalBorrow) || 0), 0);
   const supplyBenchmark = weightedAverage(markets, 'supplyAPY', 'tvl');
   const borrowBenchmark = weightedAverage(markets, 'borrowAPY', 'totalBorrow');
-  const spread = borrowBenchmark - supplyBenchmark;
   const utilization = totalSupply > 0 ? totalBorrow / totalSupply : 0;
 
   return `
@@ -70,7 +69,7 @@ function buildWeightedOverviewRow(markets) {
       <td><span class="apy-value supply-high">${formatAPY(supplyBenchmark)}</span></td>
       <td><span class="apy-value">${formatAPY(borrowBenchmark)}</span></td>
       <td class="tvl-value">${formatUSD(totalSupply)}</td>
-      <td><span class="apy-value">${formatAPY(spread)}</span></td>
+      <td class="tvl-value">${formatUSD(totalBorrow)}</td>
       <td>${formatUtilizationHtml(utilization)}</td>
     </tr>
   `;
@@ -99,7 +98,7 @@ export function renderOverviewTable(markets) {
       <td><span class="apy-value supply-high">${formatAPY(m.supplyAPY)}</span></td>
       <td><span class="apy-value">${formatAPY(m.borrowAPY)}</span></td>
       <td class="tvl-value">${formatUSD(m.tvl)}</td>
-      <td><span class="apy-value">${formatAPY(m.spread)}</span></td>
+      <td class="tvl-value">${formatUSD(m.totalBorrow)}</td>
       <td>${formatUtilizationHtml(m.utilization)}</td>
     </tr>
   `).join('');
