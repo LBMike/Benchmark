@@ -5,7 +5,7 @@
 // Excludes: RWA (winding down, 0% fee)
 // ============================================================
 
-import { SKY_DEFILLAMA_POOLS, CHAIN_NAME_TO_ID, RPC_URLS } from '../config.js';
+import { SKY_DEFILLAMA_POOLS, CHAIN_NAME_TO_ID, RPC_URLS, RPC_FALLBACKS } from '../config.js';
 import { normalizeMarket } from '../utils.js';
 
 const DEFILLAMA_CHART_URL = 'https://yields.llama.fi/chart';
@@ -50,19 +50,25 @@ const WAD = BigInt('1000000000000000000');          // 1e18
 const RAY = BigInt('1000000000000000000000000000');  // 1e27
 const RAY_NUM = 1e27;
 
-let _provider = null;
-
-function getProvider() {
-  if (!_provider) {
-    _provider = new ethers.JsonRpcProvider(RPC_URLS.ethereum);
+async function getWorkingProvider() {
+  const urls = [RPC_URLS.ethereum, ...(RPC_FALLBACKS.ethereum || [])];
+  for (const url of urls) {
+    try {
+      const p = new ethers.JsonRpcProvider(url);
+      await Promise.race([
+        p.getBlockNumber(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000)),
+      ]);
+      return p;
+    } catch { /* try next */ }
   }
-  return _provider;
+  return new ethers.JsonRpcProvider(RPC_URLS.ethereum);
 }
 
 // ── Fetch all ilk data (debt + stability fee) from Jug + Vat ──
 async function fetchAllIlkData() {
   try {
-    const provider = getProvider();
+    const provider = await getWorkingProvider();
     const jug = new ethers.Contract(JUG_ADDRESS, JUG_ABI, provider);
     const vat = new ethers.Contract(VAT_ADDRESS, VAT_ABI, provider);
 

@@ -3,7 +3,7 @@
 // Uses totalSupply / totalBorrow for USDC, USDT markets on Ethereum
 // ============================================================
 
-import { RPC_URLS } from '../config.js';
+import { RPC_URLS, RPC_FALLBACKS } from '../config.js';
 import { normalizeMarket } from '../utils.js';
 
 const MIN_TVL_USD = 100_000_000;
@@ -29,9 +29,24 @@ function rateToAprPct(ratePerSecondScaled) {
   return (r * SECONDS_PER_YEAR / RATE_SCALE) * 100;
 }
 
+async function getWorkingProvider() {
+  const urls = [RPC_URLS.ethereum, ...(RPC_FALLBACKS.ethereum || [])];
+  for (const url of urls) {
+    try {
+      const p = new ethers.JsonRpcProvider(url);
+      await Promise.race([
+        p.getBlockNumber(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000)),
+      ]);
+      return p;
+    } catch { /* try next */ }
+  }
+  return new ethers.JsonRpcProvider(RPC_URLS.ethereum);
+}
+
 export async function fetchCompoundData() {
   try {
-    const provider = new ethers.JsonRpcProvider(RPC_URLS.ethereum);
+    const provider = await getWorkingProvider();
     const results = [];
 
     for (const m of COMPOUND_ETH_MARKETS) {

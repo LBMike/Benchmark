@@ -4,23 +4,30 @@
 
 import {
   SPARK_CONFIG, SPARK_POOL_ADDRESSES_PROVIDER_ABI,
-  SPARK_POOL_DATA_PROVIDER_ABI, RPC_URLS, STABLECOIN_ADDRESSES,
+  SPARK_POOL_DATA_PROVIDER_ABI, RPC_URLS, RPC_FALLBACKS, STABLECOIN_ADDRESSES,
 } from '../config.js';
 import { rayToAPY, normalizeMarket } from '../utils.js';
 
 const STABLECOINS = ['USDC', 'USDT', 'USDS', 'DAI'];
-let _provider = null;
 
-function getProvider() {
-  if (!_provider) {
-    _provider = new ethers.JsonRpcProvider(RPC_URLS.ethereum);
+async function getWorkingProvider() {
+  const urls = [RPC_URLS.ethereum, ...(RPC_FALLBACKS.ethereum || [])];
+  for (const url of urls) {
+    try {
+      const p = new ethers.JsonRpcProvider(url);
+      await Promise.race([
+        p.getBlockNumber(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000)),
+      ]);
+      return p;
+    } catch { /* try next */ }
   }
-  return _provider;
+  return new ethers.JsonRpcProvider(RPC_URLS.ethereum);
 }
 
 export async function fetchSparkData() {
   try {
-    const provider = getProvider();
+    const provider = await getWorkingProvider();
     const config = SPARK_CONFIG.ethereum;
 
     // 1. PoolDataProvider 주소 가져오기
@@ -39,7 +46,7 @@ export async function fetchSparkData() {
     );
     const allTokens = await dataProvider.getAllReservesTokens();
 
-    // 3. USDC/USDT만 필터링
+    // 3. 스테이블코인 필터링
     const stableTokens = allTokens.filter(t => STABLECOINS.includes(t.symbol));
 
     const results = [];
@@ -53,7 +60,7 @@ export async function fetchSparkData() {
         const borrowAPY = rayToAPY(reserveData.variableBorrowRate);
 
         // totalAToken = total supply in wei units
-        // USDC/USDT = 6 decimals, USDS = 18 decimals
+        // USDC/USDT = 6 decimals, USDS/DAI = 18 decimals
         const decimals = (token.symbol === 'USDC' || token.symbol === 'USDT') ? 6 : 18;
         const totalAToken = Number(reserveData.totalAToken) / (10 ** decimals);
         const totalVariableDebt = Number(reserveData.totalVariableDebt) / (10 ** decimals);
