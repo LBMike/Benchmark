@@ -15,6 +15,7 @@ import { fetchSkyData } from './data/sky.js';
 import { fetchKaminoData } from './data/kamino.js';
 import { fetchJupiterData } from './data/jupiter.js';
 import { fetchFundingRates, fetchAllFundingHistory } from './data/funding.js';
+import { fetchDefiLlamaHistory } from './data/defillama-history.js';
 import {
   renderBenchmarkCards,
   renderBenchmarkRateChart,
@@ -22,6 +23,7 @@ import {
   renderUtilizationChart,
   renderStablecoinChart,
   renderProtocolRateChart,
+  renderNetFlowChart,
   setChartCategory,
   updateProtocolStatus,
   updateLastUpdated,
@@ -142,9 +144,10 @@ async function refreshLiveData() {
 
 // --- 히스토리 로드 (Lending, 초기 1회) ---
 async function loadHistory() {
-  const [aaveHist, morphoHist] = await Promise.allSettled([
+  const [aaveHist, morphoHist, defillamaHist] = await Promise.allSettled([
     fetchAaveHistory(),
     fetchMorphoHistory(365),
+    fetchDefiLlamaHistory(),
   ]);
 
   if (aaveHist.status === 'fulfilled') {
@@ -167,6 +170,16 @@ async function loadHistory() {
       store.setHistory('supplyUsd', marketId, points);
     }
     for (const [marketId, points] of Object.entries(morphoHist.value.borrowUsd || {})) {
+      store.setHistory('borrowUsd', marketId, points);
+    }
+  }
+
+  // DefiLlama chartLendBorrow history (Aave, Spark, Compound, Euler, Fluid, Kamino, Horizon)
+  if (defillamaHist.status === 'fulfilled') {
+    for (const [marketId, points] of Object.entries(defillamaHist.value.supplyUsd || {})) {
+      store.setHistory('supplyUsd', marketId, points);
+    }
+    for (const [marketId, points] of Object.entries(defillamaHist.value.borrowUsd || {})) {
       store.setHistory('borrowUsd', marketId, points);
     }
   }
@@ -203,6 +216,7 @@ function onStoreUpdate(data) {
   renderUtilizationChart(data.history, data.marketsByScope?.overview || data.markets, currentRangeByScope.overview);
   renderStablecoinChart(data.history, data.marketsByScope?.overview || data.markets, currentRangeByScope.overview);
   renderProtocolRateChart(data.history, currentRangeByScope.overview);
+  renderNetFlowChart(data.history, data.marketsByScope?.overview || data.markets, currentRangeByScope.overview);
   renderSupplyHistoryChart(data.history.supply, currentRangeByScope.supply);
   renderBorrowHistoryChart(data.history.borrow, currentRangeByScope.borrow);
 
@@ -318,6 +332,7 @@ function initTimeRangeBtns() {
           renderUtilizationChart(histAll, overviewMarkets, currentRangeByScope.overview);
           renderStablecoinChart(histAll, overviewMarkets, currentRangeByScope.overview);
           renderProtocolRateChart(histAll, currentRangeByScope.overview);
+          renderNetFlowChart(histAll, overviewMarkets, currentRangeByScope.overview);
           return;
         }
         if (scope === 'supply') {

@@ -68,6 +68,16 @@
         <div class="card-value" id="utilization-benchmark">—</div>
         <div class="card-sub">Total Borrow / Total Supply</div>
       </div>
+      <div class="card benchmark-card">
+        <div class="card-label">24h Net Supply Flow</div>
+        <div class="card-value" id="net-supply-flow">—</div>
+        <div class="card-sub">Daily supply change</div>
+      </div>
+      <div class="card benchmark-card">
+        <div class="card-label">24h Net Borrow Flow</div>
+        <div class="card-value" id="net-borrow-flow">—</div>
+        <div class="card-sub">Daily borrow change</div>
+      </div>
     </section>
 
     <!-- Total TVL Cards -->
@@ -96,6 +106,7 @@
           <button class="category-tab" data-category="utilization">Utilization</button>
           <button class="category-tab" data-category="stablecoin">By Stablecoin</button>
           <button class="category-tab" data-category="protocol">By Protocol</button>
+          <button class="category-tab" data-category="netflow">Net Flow</button>
         </div>
         <div class="time-range-btns" data-scope="overview">
           <button class="time-btn active" data-range="30">1M</button>
@@ -117,6 +128,9 @@
       </div>
       <div class="chart-container" id="protocol-chart-wrapper" style="display:none;">
         <canvas id="protocol-chart"></canvas>
+      </div>
+      <div class="chart-container" id="netflow-chart-wrapper" style="display:none;">
+        <canvas id="netflow-chart"></canvas>
       </div>
     </section>
 

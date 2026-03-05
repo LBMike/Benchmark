@@ -254,6 +254,49 @@ export const FUNDING_SYMBOLS = {
   },
 };
 
+// --- DefiLlama chartLendBorrow Pool IDs for Net Flow History ---
+// Source: https://yields.llama.fi/chartLendBorrow/{poolId}
+// Provides historical totalSupplyUsd + totalBorrowUsd per pool
+// Keys use 'dl-' prefix to avoid collision with Morpho native history
+export const DEFILLAMA_LEND_BORROW_POOLS = {
+  // Aave V3 — Ethereum
+  'dl-aave-v3-ethereum-USDT': 'f981a304-bb6c-45b8-b0c5-fd2f515ad23a',
+  'dl-aave-v3-ethereum-USDC': 'aa70268e-4b52-42bf-a116-608b370f9501',
+  'dl-aave-v3-ethereum-RLUSD': '85fc6934-c94d-4ebe-9c60-66beb363669f',
+  'dl-aave-v3-ethereum-PYUSD': 'd118f505-e75f-4152-bad3-49a2dc7482bf',
+  'dl-aave-v3-ethereum-USDS': 'e65588a1-27ad-4e20-9232-68a6cfaccf63',
+  // Aave V3 — Base
+  'dl-aave-v3-base-USDC': '7e0661bf-8cf3-45e6-9424-31916d4c7b84',
+  // Aave V3 — Arbitrum
+  'dl-aave-v3-arbitrum-USDC': 'd9fa8e14-0447-4207-9ae8-7810199dfa1f',
+
+  // SparkLend — Ethereum
+  'dl-spark-ethereum-USDS': '54e9b138-3146-4c1f-8dce-1cb948f5ef96',
+  'dl-spark-ethereum-USDT': '8fbe28b8-140d-4e37-8804-5d2aba4daded',
+  'dl-spark-ethereum-PYUSD': '995b269a-8409-4c55-b97e-868f443b432e',
+  'dl-spark-ethereum-USDC': '65ce8276-b4d9-41ba-9f6f-21fc374cf9bc',
+
+  // Compound V3 — Ethereum
+  'dl-compound-ethereum-USDC': '7da72d09-56ca-4ec5-a45f-59114353e487',
+  'dl-compound-ethereum-USDT': 'f4d5b566-e815-4ca2-bb07-7bcd8bc797f1',
+
+  // Euler V2 — Ethereum (largest vault per asset)
+  'dl-euler-ethereum-PYUSD': 'fa55aa2b-e244-4ce4-ab00-9e96b39df32b',
+  'dl-euler-ethereum-RLUSD': '73e933a7-73b2-43ec-b1e9-d5d1d42ce2de',
+  'dl-euler-ethereum-USDC': '0fde8996-ecdf-441c-94a9-ec67403e9b8c',
+
+  // Fluid — Ethereum
+  'dl-fluid-ethereum-USDC': '4438dabc-7f0c-430b-8136-2722711ae663',
+  'dl-fluid-ethereum-USDT': '4e8cc592-c8d5-4824-8155-128ba521e903',
+
+  // Kamino — Solana
+  'dl-kamino-solana-USDC': 'd2141a59-c199-4be7-8d4b-c8223954836b',
+  'dl-kamino-solana-PYUSD': 'eaece65e-ffb2-4631-a95e-7f267cb2f1ba',
+
+  // Horizon — Ethereum
+  'dl-horizon-ethereum-RLUSD': '98d07333-f5e4-4a48-8061-cfb4b73ccf79',
+};
+
 export const FUNDING_API = {
   binance: {
     current: 'https://fapi.binance.com/fapi/v1/premiumIndex',

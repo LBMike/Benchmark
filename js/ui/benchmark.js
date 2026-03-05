@@ -10,6 +10,7 @@ let tvlChart = null;
 let utilizationChart = null;
 let stablecoinChart = null;
 let protocolChart = null;
+let netflowChart = null;
 let currentCategory = 'benchmark';
 
 // ── 공통 차트 옵션 ──
@@ -58,7 +59,29 @@ function baseChartOptions() {
 }
 
 // ── Benchmark 카드 ──
-export function renderBenchmarkCards({ benchmarks }) {
+// ── Net Flow 24h delta 계산 헬퍼 ──
+function computeLatestDelta(usdHistoryMap) {
+  // 모든 마켓의 supplyUsd/borrowUsd 히스토리에서 마지막 2일 데이터로 delta 계산
+  // Sky 제외
+  const dayTotals = {}; // { dayTs: totalUsd }
+
+  for (const [marketId, points] of Object.entries(usdHistoryMap || {})) {
+    if (marketId.includes('sky')) continue;
+    for (const p of points) {
+      const day = Math.floor(p.x / 86400) * 86400;
+      dayTotals[day] = (dayTotals[day] || 0) + (Number(p.y) || 0);
+    }
+  }
+
+  const sortedDays = Object.keys(dayTotals).map(Number).sort((a, b) => a - b);
+  if (sortedDays.length < 2) return null;
+
+  const lastDay = sortedDays[sortedDays.length - 1];
+  const prevDay = sortedDays[sortedDays.length - 2];
+  return dayTotals[lastDay] - dayTotals[prevDay];
+}
+
+export function renderBenchmarkCards({ benchmarks, history }) {
   const { supplyBenchmark, borrowBenchmark, fundingSpread, totalSupply, totalBorrow, utilizationBenchmark, marketCount } = benchmarks;
 
   document.getElementById('supply-benchmark').textContent = formatAPY(supplyBenchmark);
@@ -72,6 +95,26 @@ export function renderBenchmarkCards({ benchmarks }) {
     utilEl.style.color = utilizationColor(utilizationBenchmark);
   }
   document.getElementById('market-count').textContent = marketCount;
+
+  // 24h Net Flow cards
+  const supplyUsd = history?.supplyUsd || {};
+  const borrowUsd = history?.borrowUsd || {};
+  const netSupplyFlow = computeLatestDelta(supplyUsd);
+  const netBorrowFlow = computeLatestDelta(borrowUsd);
+
+  const nsEl = document.getElementById('net-supply-flow');
+  if (nsEl && netSupplyFlow != null) {
+    nsEl.textContent = (netSupplyFlow >= 0 ? '+' : '') + formatUSD(Math.abs(netSupplyFlow));
+    if (netSupplyFlow < 0) nsEl.textContent = '-' + formatUSD(Math.abs(netSupplyFlow));
+    nsEl.style.color = netSupplyFlow >= 0 ? '#3fb950' : '#f85149';
+  }
+
+  const nbEl = document.getElementById('net-borrow-flow');
+  if (nbEl && netBorrowFlow != null) {
+    nbEl.textContent = (netBorrowFlow >= 0 ? '+' : '') + formatUSD(Math.abs(netBorrowFlow));
+    if (netBorrowFlow < 0) nbEl.textContent = '-' + formatUSD(Math.abs(netBorrowFlow));
+    nbEl.style.color = netBorrowFlow >= 0 ? '#3fb950' : '#f85149';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -447,6 +490,117 @@ export function renderTvlChart(historyData, markets, range = 90) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// Net Flow 카테고리: 일별 순 Supply/Borrow 변화량 바 차트
+// ══════════════════════════════════════════════════════════════
+export function renderNetFlowChart(historyData, markets, range = 90) {
+  const canvas = document.getElementById('netflow-chart');
+  if (!canvas) return;
+
+  const SKY_EXCLUDE_PREFIX = 'sky';
+  const cutoff = Date.now() / 1000 - range * 86400;
+  const supplyUsd = historyData.supplyUsd || {};
+  const borrowUsd = historyData.borrowUsd || {};
+
+  // 일별 총 Supply / Borrow 합산
+  const supplyByDay = {};
+  const borrowByDay = {};
+  const allDays = new Set();
+
+  for (const [marketId, points] of Object.entries(supplyUsd)) {
+    if (marketId.startsWith(SKY_EXCLUDE_PREFIX)) continue;
+    for (const p of points) {
+      if (p.x < cutoff) continue;
+      const day = Math.floor(p.x / 86400) * 86400;
+      supplyByDay[day] = (supplyByDay[day] || 0) + (Number(p.y) || 0);
+      allDays.add(day);
+    }
+  }
+
+  for (const [marketId, points] of Object.entries(borrowUsd)) {
+    if (marketId.startsWith(SKY_EXCLUDE_PREFIX)) continue;
+    for (const p of points) {
+      if (p.x < cutoff) continue;
+      const day = Math.floor(p.x / 86400) * 86400;
+      borrowByDay[day] = (borrowByDay[day] || 0) + (Number(p.y) || 0);
+      allDays.add(day);
+    }
+  }
+
+  const days = [...allDays].sort((a, b) => a - b);
+
+  if (days.length < 2) {
+    if (netflowChart) { netflowChart.destroy(); netflowChart = null; }
+    return;
+  }
+
+  // 전일 대비 delta 계산 (첫째 날은 delta 없으므로 건너뜀)
+  const flowDays = days.slice(1);
+  const supplyFlows = [];
+  const borrowFlows = [];
+
+  for (let i = 1; i < days.length; i++) {
+    const prevDay = days[i - 1];
+    const curDay = days[i];
+    supplyFlows.push((supplyByDay[curDay] || 0) - (supplyByDay[prevDay] || 0));
+    borrowFlows.push((borrowByDay[curDay] || 0) - (borrowByDay[prevDay] || 0));
+  }
+
+  const labels = flowDays.map(t => {
+    const d = new Date(t * 1000);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  });
+
+  // 바 색상: 양수=초록, 음수=빨강
+  const supplyColors = supplyFlows.map(v => v >= 0 ? '#3fb950' : '#f85149');
+  const borrowColors = borrowFlows.map(v => v >= 0 ? '#58a6ff' : '#f0883e');
+
+  const datasets = [
+    {
+      label: 'Net Supply Flow',
+      data: supplyFlows,
+      backgroundColor: supplyColors,
+      borderColor: supplyColors,
+      borderWidth: 1,
+      borderRadius: 2,
+    },
+    {
+      label: 'Net Borrow Flow',
+      data: borrowFlows,
+      backgroundColor: borrowColors,
+      borderColor: borrowColors,
+      borderWidth: 1,
+      borderRadius: 2,
+    },
+  ];
+
+  if (netflowChart) netflowChart.destroy();
+
+  const opts = baseChartOptions();
+  opts.scales.y.ticks.callback = v => {
+    const abs = Math.abs(v);
+    const sign = v < 0 ? '-' : '+';
+    if (abs >= 1e9) return sign + '$' + (abs / 1e9).toFixed(1) + 'B';
+    if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(0) + 'M';
+    return sign + '$' + abs.toLocaleString();
+  };
+  opts.plugins.tooltip.callbacks.label = ctx => {
+    const v = ctx.raw;
+    if (v == null) return `${ctx.dataset.label}: —`;
+    const sign = v >= 0 ? '+' : '-';
+    const abs = Math.abs(v);
+    if (abs >= 1e9) return `${ctx.dataset.label}: ${sign}$${(abs / 1e9).toFixed(2)}B`;
+    if (abs >= 1e6) return `${ctx.dataset.label}: ${sign}$${(abs / 1e6).toFixed(1)}M`;
+    return `${ctx.dataset.label}: ${sign}$${abs.toLocaleString()}`;
+  };
+
+  netflowChart = new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: opts,
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
 // Utilization 카테고리: TVL 가중 Utilization 라인
 // ══════════════════════════════════════════════════════════════
 export function renderUtilizationChart(historyData, markets, range = 90) {
@@ -684,12 +838,14 @@ export function setChartCategory(category) {
   const utilizationWrapper = document.getElementById('utilization-chart-wrapper');
   const stablecoinWrapper = document.getElementById('stablecoin-chart-wrapper');
   const protocolWrapper = document.getElementById('protocol-chart-wrapper');
+  const netflowWrapper = document.getElementById('netflow-chart-wrapper');
 
   if (benchmarkWrapper) benchmarkWrapper.style.display = category === 'benchmark' ? '' : 'none';
   if (tvlWrapper) tvlWrapper.style.display = category === 'tvl' ? '' : 'none';
   if (utilizationWrapper) utilizationWrapper.style.display = category === 'utilization' ? '' : 'none';
   if (stablecoinWrapper) stablecoinWrapper.style.display = category === 'stablecoin' ? '' : 'none';
   if (protocolWrapper) protocolWrapper.style.display = category === 'protocol' ? '' : 'none';
+  if (netflowWrapper) netflowWrapper.style.display = category === 'netflow' ? '' : 'none';
 }
 
 export function getChartCategory() {
