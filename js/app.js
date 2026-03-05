@@ -15,7 +15,7 @@ import { fetchSkyData } from './data/sky.js';
 import { fetchKaminoData } from './data/kamino.js';
 import { fetchJupiterData } from './data/jupiter.js';
 import { fetchFundingRates, fetchAllFundingHistory } from './data/funding.js';
-import { fetchDefiLlamaHistory } from './data/defillama-history.js';
+import { fetchDefiLlamaHistory, fetchLendBorrowSnapshot } from './data/defillama-history.js';
 import {
   renderBenchmarkCards,
   renderBenchmarkRateChart,
@@ -144,10 +144,11 @@ async function refreshLiveData() {
 
 // --- 히스토리 로드 (Lending, 초기 1회) ---
 async function loadHistory() {
-  const [aaveHist, morphoHist, defillamaHist] = await Promise.allSettled([
+  const [aaveHist, morphoHist, defillamaHist, lendBorrowResult] = await Promise.allSettled([
     fetchAaveHistory(),
     fetchMorphoHistory(365),
     fetchDefiLlamaHistory(),
+    fetchLendBorrowSnapshot(),
   ]);
 
   if (aaveHist.status === 'fulfilled') {
@@ -183,6 +184,11 @@ async function loadHistory() {
       store.setHistory('borrowUsd', marketId, points);
     }
   }
+
+  // /lendBorrow 24h 델타 (테이블용)
+  if (lendBorrowResult.status === 'fulfilled') {
+    store.setLendBorrowDeltas(lendBorrowResult.value.deltas || {});
+  }
 }
 
 // --- 히스토리 로드 (Funding, 초기 1회) ---
@@ -200,7 +206,7 @@ async function loadFundingHistory() {
 // --- UI 업데이트 ---
 function onStoreUpdate(data) {
   renderBenchmarkCards(data);
-  renderOverviewTable(data.marketsByScope?.overview || data.markets);
+  renderOverviewTable(data.marketsByScope?.overview || data.markets, data.history, data.lendBorrowDeltas);
   renderSupplyTable(data.marketsByScope?.supply || data.markets);
   renderBorrowTable(data.marketsByScope?.borrow || data.markets);
   updateProtocolStatus(data.statuses);
@@ -376,6 +382,7 @@ function initSortListener() {
       benchmarks: store.getBenchmarks('overview'),
       statuses: store.getProtocolStatuses(),
       history: { supply: store.getHistory('supply'), borrow: store.getHistory('borrow'), supplyUsd: store.getHistory('supplyUsd'), borrowUsd: store.getHistory('borrowUsd') },
+      lendBorrowDeltas: store.getLendBorrowDeltas(),
       fundingRates: store.getFundingRates(),
       fundingHistory: store.getFundingHistory(),
       fundingStatuses: store.getFundingStatuses(),
@@ -455,6 +462,7 @@ async function init() {
       benchmarks: store.getBenchmarks('overview'),
       statuses: store.getProtocolStatuses(),
       history: { supply: store.getHistory('supply'), borrow: store.getHistory('borrow'), supplyUsd: store.getHistory('supplyUsd'), borrowUsd: store.getHistory('borrowUsd') },
+      lendBorrowDeltas: store.getLendBorrowDeltas(),
       fundingRates: store.getFundingRates(),
       fundingHistory: store.getFundingHistory(),
       fundingStatuses: store.getFundingStatuses(),

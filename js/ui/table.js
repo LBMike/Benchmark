@@ -46,6 +46,60 @@ function getTableSort(tableType) {
   return sortState[tableType] || sortState.overview;
 }
 
+// --- Net Flow 24h 헬퍼 ---
+/**
+ * 마켓 → DefiLlama/Morpho 히스토리 키 매핑 후 최근 24h 델타 계산
+ * supplyUsdMap / borrowUsdMap = store.getHistory('supplyUsd') / ('borrowUsd')
+ */
+function getHistoryKey(m) {
+  // DefiLlama key: dl-{protocol}-{chain}-{ASSET}
+  return `dl-${m.protocol}-${m.chain}-${m.asset}`;
+}
+
+function compute24hDelta(histMap, key) {
+  // 먼저 DefiLlama 키로 시도, 없으면 marketId(Morpho 등)로 폴백
+  const points = histMap[key] || histMap[key?.toLowerCase?.()] || null;
+  if (!points || points.length < 2) return null;
+  const latest = points[points.length - 1].y;
+  const prev = points[points.length - 2].y;
+  return latest - prev;
+}
+
+function formatFlow(value) {
+  if (value == null || !Number.isFinite(value)) return '<span class="flow-value" style="color:#888">—</span>';
+  const abs = Math.abs(value);
+  let display;
+  if (abs >= 1e9) display = `$${(abs / 1e9).toFixed(2)}B`;
+  else if (abs >= 1e6) display = `$${(abs / 1e6).toFixed(2)}M`;
+  else if (abs >= 1e3) display = `$${(abs / 1e3).toFixed(1)}K`;
+  else display = `$${abs.toFixed(0)}`;
+  const sign = value >= 0 ? '+' : '-';
+  const color = value >= 0 ? '#3fb950' : '#f85149';
+  return `<span class="flow-value" style="color:${color}">${sign}${display}</span>`;
+}
+
+function enrichMarketsWithFlow(markets, supplyUsdMap, borrowUsdMap, lendBorrowDeltas) {
+  return markets.map(m => {
+    const dlKey = getHistoryKey(m);
+
+    // 1순위: /lendBorrow 스냅샷 델타 (가장 신뢰도 높음)
+    const snapshotDelta = lendBorrowDeltas[dlKey];
+    if (snapshotDelta) {
+      return {
+        ...m,
+        netSupply24h: snapshotDelta.supplyDelta,
+        netBorrow24h: snapshotDelta.borrowDelta,
+        _hasFlow: true,
+      };
+    }
+
+    // 2순위: 히스토리 기반 델타 (Morpho 등)
+    const ns = compute24hDelta(supplyUsdMap, dlKey) ?? compute24hDelta(supplyUsdMap, m.marketId);
+    const nb = compute24hDelta(borrowUsdMap, dlKey) ?? compute24hDelta(borrowUsdMap, m.marketId);
+    return { ...m, netSupply24h: ns ?? 0, netBorrow24h: nb ?? 0, _hasFlow: ns != null || nb != null };
+  });
+}
+
 function buildWeightedOverviewRow(markets) {
   const totalSupply = markets.reduce((sum, m) => sum + (Number(m.tvl) || 0), 0);
   const totalBorrow = markets.reduce((sum, m) => sum + (Number(m.totalBorrow) || 0), 0);
@@ -56,6 +110,10 @@ function buildWeightedOverviewRow(markets) {
   const lendingSupply = lendingMarkets.reduce((sum, m) => sum + (Number(m.tvl) || 0), 0);
   const lendingBorrow = lendingMarkets.reduce((sum, m) => sum + (Number(m.totalBorrow) || 0), 0);
   const utilization = lendingSupply > 0 ? lendingBorrow / lendingSupply : 0;
+
+  // 전체 net flow 합산 (Sky 제외)
+  const aggNetSupply = lendingMarkets.reduce((sum, m) => sum + (m.netSupply24h || 0), 0);
+  const aggNetBorrow = lendingMarkets.reduce((sum, m) => sum + (m.netBorrow24h || 0), 0);
 
   return `
     <tr class="weighted-row">
@@ -74,21 +132,30 @@ function buildWeightedOverviewRow(markets) {
       <td><span class="apy-value">${formatAPY(borrowBenchmark)}</span></td>
       <td class="tvl-value">${formatUSD(totalSupply)}</td>
       <td class="tvl-value">${formatUSD(totalBorrow)}</td>
+      <td>${formatFlow(aggNetSupply)}</td>
+      <td>${formatFlow(aggNetBorrow)}</td>
       <td>${formatUtilizationHtml(utilization)}</td>
     </tr>
   `;
 }
 
 // --- Overview Table ---
-export function renderOverviewTable(markets) {
+export function renderOverviewTable(markets, history, lendBorrowDeltas) {
   const tbody = document.getElementById('overview-table-body');
   if (!tbody) return;
 
+  const supplyUsdMap = history?.supplyUsd || {};
+  const borrowUsdMap = history?.borrowUsd || {};
+  const deltas = lendBorrowDeltas || {};
+
+  // 마켓에 netFlow 필드 추가
+  const enriched = enrichMarketsWithFlow(markets, supplyUsdMap, borrowUsdMap, deltas);
+
   const sort = getTableSort('overview');
-  const sorted = sortMarkets(markets, sort.key, sort.dir);
+  const sorted = sortMarkets(enriched, sort.key, sort.dir);
 
   if (sorted.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No markets match the current filter (TVL ≥ $100M)</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No markets match the current filter (TVL ≥ $100M)</td></tr>`;
     return;
   }
 
@@ -103,6 +170,8 @@ export function renderOverviewTable(markets) {
       <td><span class="apy-value">${formatAPY(m.borrowAPY)}</span></td>
       <td class="tvl-value">${formatUSD(m.tvl)}</td>
       <td class="tvl-value">${formatUSD(m.totalBorrow)}</td>
+      <td>${m._hasFlow ? formatFlow(m.netSupply24h) : formatFlow(null)}</td>
+      <td>${m._hasFlow ? formatFlow(m.netBorrow24h) : formatFlow(null)}</td>
       <td>${formatUtilizationHtml(m.utilization)}</td>
     </tr>
   `).join('');

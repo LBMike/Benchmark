@@ -12,6 +12,9 @@ class Store {
     this._listeners = [];
     this._protocolStatus = {};
 
+    // DefiLlama /lendBorrow 24h 델타
+    this._lendBorrowDeltas = {};
+
     // Funding rate state
     this._fundingRates = [];
     this._fundingHistory = {};
@@ -111,6 +114,14 @@ class Store {
     return { ...this._fundingStatuses };
   }
 
+  setLendBorrowDeltas(deltas) {
+    this._lendBorrowDeltas = deltas;
+  }
+
+  getLendBorrowDeltas() {
+    return this._lendBorrowDeltas;
+  }
+
   setFilter(scope, key, value) {
     // backward-compat: setFilter(key, value) => overview scope
     if (arguments.length === 2) {
@@ -141,6 +152,7 @@ class Store {
       benchmarks: this.getBenchmarks('overview'),
       statuses: this._protocolStatus,
       history: this._history,
+      lendBorrowDeltas: this._lendBorrowDeltas,
       fundingRates: this._fundingRates,
       fundingHistory: this._fundingHistory,
       fundingStatuses: this._fundingStatuses,
